@@ -45,8 +45,8 @@ int shadow_assign_virtual_id() {
 }
 
 // Memory Instrumentation Marker Functions
-int g_file_symbol = 0;
-int g_line_cnt = 0;
+int g_file_symbol = -1;
+int g_line_cnt = -1;
 void shadow_instrumentation_marker_set(int file_symbol, int line_cnt) {
     g_file_symbol = file_symbol;
     g_line_cnt = line_cnt;

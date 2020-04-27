@@ -267,6 +267,8 @@ void tracker_addAllocatedBytes(Tracker* tracker, gpointer location, gsize alloca
     MAGIC_ASSERT(tracker);
 
     if(tracker->loginfo & LOG_INFO_FLAGS_RAM) {
+        // BLEEP memory instrumentation
+        shadow_instrumentation_marker_alloc_log(allocatedBytes);
         tracker->allocatedBytesTotal += allocatedBytes;
         tracker->allocatedBytesLastInterval += allocatedBytes;
         g_hash_table_insert(tracker->allocatedLocations, location, GSIZE_TO_POINTER(allocatedBytes));
@@ -283,6 +285,8 @@ void tracker_removeAllocatedBytes(Tracker* tracker, gpointer location) {
             gboolean b = g_hash_table_remove(tracker->allocatedLocations, location);
             utility_assert(b);
             gsize allocatedBytes = GPOINTER_TO_SIZE(value);
+            // BLEEP memory instrumentation
+            shadow_instrumentation_marker_free_log(allocatedBytes);
             tracker->allocatedBytesTotal -= allocatedBytes;
             tracker->deallocatedBytesLastInterval += allocatedBytes;
         } else {
