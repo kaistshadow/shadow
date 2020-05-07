@@ -52,12 +52,12 @@ void shadow_instrumentation_marker_set(int file_symbol, int line_cnt) {
     g_line_cnt = line_cnt;
     return;
 }
-void shadow_instrumentation_marker_alloc_log(size_t sz) {
-    message("SMLA,%d,%d,%d",g_file_symbol, g_line_cnt, sz);
+void shadow_instrumentation_marker_alloc_log(gpointer location, size_t sz) {
+    message("SMLA,%d,%d,%d,%x",g_file_symbol, g_line_cnt, sz, location);
     return;
 }
-void shadow_instrumentation_marker_free_log(size_t sz) {
-    message("SMLF,%d,%d,%d",g_file_symbol, g_line_cnt, sz);
+void shadow_instrumentation_marker_free_log(gpointer location, size_t sz) {
+    message("SMLF,%d,%d,%d,%x",g_file_symbol, g_line_cnt, sz, location);
     return;
 }
 
