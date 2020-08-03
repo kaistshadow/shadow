@@ -646,10 +646,10 @@ static void _epoll_tryNotify(Epoll* epoll, gpointer userData) {
 
 #ifdef DEBUG
         /* debug message for looking at the epoll tree */
-        GString* childStatusMessage = g_string_new("");
-        gchar* msg = _epoll_getChildrenStatus(epoll, childStatusMessage);
-        debug("epollfd %i BEFORE process_continue: child fd statuses:%s", epoll->super.handle, msg);
-        g_string_free(childStatusMessage, TRUE);
+        // GString* childStatusMessage = g_string_new("");
+        // gchar* msg = _epoll_getChildrenStatus(epoll, childStatusMessage);
+        // debug("epollfd %i BEFORE process_continue: child fd statuses:%s", epoll->super.handle, msg);
+        // g_string_free(childStatusMessage, TRUE);
 #endif
 
         /* notify application to collect the reportable events */
@@ -659,10 +659,10 @@ static void _epoll_tryNotify(Epoll* epoll, gpointer userData) {
 
 #ifdef DEBUG
         /* debug message for looking at the epoll tree */
-        childStatusMessage = g_string_new("");
-        msg = _epoll_getChildrenStatus(epoll, childStatusMessage);
-        debug("epollfd %i AFTER process_continue: child fd statuses:%s", epoll->super.handle, msg);
-        g_string_free(childStatusMessage, TRUE);
+        // childStatusMessage = g_string_new("");
+        // msg = _epoll_getChildrenStatus(epoll, childStatusMessage);
+        // debug("epollfd %i AFTER process_continue: child fd statuses:%s", epoll->super.handle, msg);
+        // g_string_free(childStatusMessage, TRUE);
 #endif
 
         /* set up another shadow callback event if needed */
