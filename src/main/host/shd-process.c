@@ -78,7 +78,7 @@
 #define O_DIRECT 040000
 #endif
 
-#define PROC_PTH_STACK_SIZE 1024*1024
+#define PROC_PTH_STACK_SIZE 1280*1024//128*1024
 
 #include "shadow.h"
 
@@ -2583,7 +2583,7 @@ int process_emu_accept(Process* proc, int fd, struct sockaddr* addr, socklen_t* 
     if(prevCTX == PCTX_PLUGIN) {
         _process_changeContext(proc, PCTX_SHADOW, PCTX_PTH);
         utility_assert(proc->tstate == pth_gctx_get());
-        ret = pth_accept(fd, addr, addr_len);
+        //ret = pth_accept(fd, addr, addr_len);
         _process_changeContext(proc, PCTX_PTH, PCTX_SHADOW);
         if(ret == -1) {
             _process_setErrno(proc, errno);
@@ -2611,14 +2611,15 @@ int process_emu_accept(Process* proc, int fd, struct sockaddr* addr, socklen_t* 
                 if(addr != NULL && addr_len != NULL && *addr_len >= sizeof(struct sockaddr_in)) {
                     struct sockaddr_in* ai = (struct sockaddr_in*) addr;
                     ai->sin_addr.s_addr = ip;
-                    ai->sin_port = pogirt;
+                    ai->sin_port = port;
                     ai->sin_family = AF_INET;
                     *addr_len = sizeof(struct sockaddr_in);
                 }
             }
         }
     }
-
+    //Skip pth_accept logic(shadow non-blocking) because Application uses non-blocking related fcntl and ioctl
+     ret=-1;
     _process_changeContext(proc, PCTX_SHADOW, prevCTX);
     return ret;
 }
@@ -4706,7 +4707,7 @@ int process_emu_getaddrinfo(Process* proc, const char *name, const char *service
         _process_setErrno(proc, EINVAL);
         return EAI_NONAME;
     }
-
+    int compare = strcmp("0.0.0.0", name);
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
 
     gint result = 0;
@@ -4715,7 +4716,7 @@ int process_emu_getaddrinfo(Process* proc, const char *name, const char *service
     in_addr_t ip = INADDR_NONE;
     in_port_t port = 0;
 
-    if(name == NULL) {
+    if(compare == 0 || name == NULL) {
         if(hints && (hints->ai_flags & AI_PASSIVE)) {
             ip = htonl(INADDR_ANY);
         } else {
@@ -6828,9 +6829,10 @@ int process_emu_pthread_mutexattr_setpshared(Process* proc, pthread_mutexattr_t 
         ret = EINVAL;
         _process_setErrno(proc, EINVAL);
     } else {
-        warning("pthread_mutexattr_setpshared() is not supported by pth or by shadow");
-        ret = ENOSYS;
-        _process_setErrno(proc, ENOSYS);
+//        warning("pthread_mutexattr_setpshared() is not supported by pth or by shadow");
+//        ret = ENOSYS;
+//        _process_setErrno(proc, ENOSYS);
+          ret = 0 ;
     }
     _process_changeContext(proc, PCTX_SHADOW, prevCTX);
     return ret;
