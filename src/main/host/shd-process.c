@@ -1616,6 +1616,19 @@ static gint _process_emu_ioctlHelper(Process* proc, int fd, unsigned long int re
                 gsize bufferLength = tcp_getOutputBufferLength(tcpSocket);
                 gint* lengthOut = (gint*)argp;
                 *lengthOut = (gint)bufferLength;
+            } else if(request == FIONBIO) {
+                //result = fcntl(fd, F_SETFL, argp);
+                ProcessContext prevCTX2 = _process_changeContext(proc, proc->activeContext, prevCTX);
+                if((gint*)argp) { //*(unsigned long*)
+                    //set non blocking flag
+                    int flags = fcntl(fd, F_GETFL, 0);
+                    fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+                } else {
+                    //clear non blocking flag
+                    int flags = fcntl(fd, F_GETFL, 0);
+                    fcntl(fd, F_SETFL, flags & ~O_NONBLOCK);
+                }
+                _process_changeContext(proc, proc->activeContext, prevCTX2);
             } else {
                 result = ENOTTY;
             }
@@ -2086,7 +2099,7 @@ int process_emu_epoll_pwait(Process* proc, int epfd, struct epoll_event *events,
 int process_emu_socket(Process* proc, int domain, int type, int protocol) {
     gboolean isNonBlockSet = FALSE;
     gboolean isCloseOnExecuteSet = FALSE;
-
+    //printf("process_emu_socket: %x, %x, %x, %x, %x\n", type, SOCK_NONBLOCK, SOCK_CLOEXEC, domain, AF_UNIX);
     /* clear non-blocking flags if set to get true type */
     if(type & SOCK_NONBLOCK) {
         type = type & ~SOCK_NONBLOCK;
@@ -2579,11 +2592,10 @@ int process_emu_listen(Process* proc, int fd, int n) {
 int process_emu_accept(Process* proc, int fd, struct sockaddr* addr, socklen_t* addr_len)  {
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
     gint ret = 0;
-
-    if(prevCTX == PCTX_PLUGIN) {
+      if(prevCTX == PCTX_PLUGIN) {
         _process_changeContext(proc, PCTX_SHADOW, PCTX_PTH);
         utility_assert(proc->tstate == pth_gctx_get());
-        //ret = pth_accept(fd, addr, addr_len);
+        ret = pth_accept(fd, addr, addr_len);
         _process_changeContext(proc, PCTX_PTH, PCTX_SHADOW);
         if(ret == -1) {
             _process_setErrno(proc, errno);
@@ -2618,8 +2630,6 @@ int process_emu_accept(Process* proc, int fd, struct sockaddr* addr, socklen_t* 
             }
         }
     }
-    //Skip pth_accept logic(shadow non-blocking) because Application uses non-blocking related fcntl and ioctl
-     ret=-1;
     _process_changeContext(proc, PCTX_SHADOW, prevCTX);
     return ret;
 }
