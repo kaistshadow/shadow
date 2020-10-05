@@ -2595,7 +2595,11 @@ int process_emu_listen(Process* proc, int fd, int n) {
 int process_emu_accept(Process* proc, int fd, struct sockaddr* addr, socklen_t* addr_len)  {
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
     gint ret = 0;
+<<<<<<< HEAD
     if(prevCTX == PCTX_PLUGIN) {
+=======
+      if(prevCTX == PCTX_PLUGIN) {
+>>>>>>> 740c7284fc8e099cb39a63155ff474fad912a405
         _process_changeContext(proc, PCTX_SHADOW, PCTX_PTH);
         utility_assert(proc->tstate == pth_gctx_get());
         ret = pth_accept(fd, addr, addr_len);
@@ -6845,7 +6849,11 @@ int process_emu_pthread_mutexattr_setpshared(Process* proc, pthread_mutexattr_t 
 //        warning("pthread_mutexattr_setpshared() is not supported by pth or by shadow");
 //        ret = ENOSYS;
 //        _process_setErrno(proc, ENOSYS);
+<<<<<<< HEAD
         ret = 0 ;
+=======
+          ret = 0 ;
+>>>>>>> 740c7284fc8e099cb39a63155ff474fad912a405
     }
     _process_changeContext(proc, PCTX_SHADOW, prevCTX);
     return ret;
