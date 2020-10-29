@@ -56,6 +56,10 @@ void sendIPC_tcp_connect(int fd, const struct sockaddr* addr, socklen_t len) {
         // not an IPv4 address
         return;
     }
+    Descriptor *desc = host_lookupDescriptor(worker_getActiveHost(), fd);
+
+    in_addr_t from_addr;
+    socket_getSocketName((Socket*)desc, &from_addr, NULL);
 
     // get interested values for 'connect'
     struct sockaddr_in* inaddr = (struct sockaddr_in*)addr;
@@ -63,14 +67,6 @@ void sendIPC_tcp_connect(int fd, const struct sockaddr* addr, socklen_t len) {
     uint32_t in_addr = (uint32_t)(inaddr->sin_addr.s_addr);
     const char *TOPIC = "shadow_tcp_control";
     const size_t topic_size = strlen(TOPIC);
-    uint32_t from_addr;
-    Host* activeHost = worker_getActiveHost();
-    if(activeHost) {
-        Address* hostAddress = host_getDefaultAddress(activeHost);
-        if(hostAddress) {
-            from_addr = address_toNetworkIP(hostAddress);
-        }
-    }
 
     // get current virtual time
     uint64_t curTime = worker_getCurrentTime();
