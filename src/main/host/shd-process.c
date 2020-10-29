@@ -1778,10 +1778,13 @@ static int _process_emu_selectHelper(Process* proc, int nfds, fd_set *readfds, f
         ret = -1;
     } else if(nfds == 0 && readfds == NULL && writefds == NULL && exceptfds == NULL && timeout != NULL) {
         /* only wait for the timeout, no file descriptor events */
+        pth_t thread = pth_self();
+        swap_tls (proc, &thread, 1);
         _process_changeContext(proc, PCTX_SHADOW, PCTX_PTH);
         utility_assert(proc->tstate == pth_gctx_get());
         pth_nanosleep(timeout, NULL);
         _process_changeContext(proc, PCTX_PTH, PCTX_SHADOW);
+        swap_tls (proc, &thread, 0);
     } else {
         fd_set* tmpReadFDs = NULL;
         if(readfds) {
@@ -1824,10 +1827,13 @@ static int _process_emu_selectHelper(Process* proc, int nfds, fd_set *readfds, f
             }
 
             if(sleepTime) {
+                pth_t thread = pth_self();
+                swap_tls (proc, &thread, 1);
                 _process_changeContext(proc, PCTX_SHADOW, PCTX_PTH);
                 utility_assert(proc->tstate == pth_gctx_get());
                 pth_nanosleep(sleepTime, NULL);
                 _process_changeContext(proc, PCTX_PTH, PCTX_SHADOW);
+                swap_tls (proc, &thread, 0);
 
                 /* ask shadow again */
                 if(tmpReadFDs) {
