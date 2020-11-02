@@ -1163,3 +1163,15 @@ ssize_t __pthread_pwrite(int fd, const void *buf, size_t nbytes, off_t offset)
     return pth_pwrite(fd, buf, nbytes, offset);
 }
 
+ssize_t __pthread_sendmsg(int fd, struct msghdr *message, int flags)
+{
+    pthread_initialize();
+    return pth_sendmsg(fd, message, flags);
+}
+
+ssize_t __pthread_recvmsg(int fd, struct msghdr *message, int flags)
+{
+    pthread_initialize();
+    return pth_recvmsg(fd, message, flags);
+}
+
