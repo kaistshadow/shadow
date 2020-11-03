@@ -512,6 +512,8 @@ extern ssize_t            __pthread_recvfrom(int, void *, size_t, int, struct so
 extern ssize_t            __pthread_sendto(int, const void *, size_t, int, const struct sockaddr *, socklen_t);
 extern ssize_t            __pthread_pread(int, void *, size_t, off_t);
 extern ssize_t            __pthread_pwrite(int, const void *, size_t, off_t);
+extern ssize_t            __pthread_sendmsg(int fd, struct msghdr *message, int flags);
+extern ssize_t            __pthread_recvmsg(int fd, struct msghdr *message, int flags);
 
 #if _POSIX_THREAD_SYSCALL_SOFT && !defined(_PTHREAD_PRIVATE)
 #define fork       __pthread_fork
@@ -535,6 +537,8 @@ extern ssize_t            __pthread_pwrite(int, const void *, size_t, off_t);
 #define sendto     __pthread_sendto
 #define pread      __pthread_pread
 #define pwrite     __pthread_pwrite
+#define sendmsg    __pthread_sendmsg
+#define recvmsg    __pthread_recvmsg
 #endif
 
 /*
@@ -589,4 +593,3 @@ extern ssize_t            __pthread_pwrite(int, const void *, size_t, off_t);
 #endif
 
 #endif /* _PTH_PTHREAD_H_ */
-
