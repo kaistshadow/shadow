@@ -1651,3 +1651,105 @@ done:
     return rv;
 }
 
+ssize_t pth_sendmsg(int fd, struct msghdr *message, int flags)
+{
+    pth_event_t ev;
+    int fdmode;
+    ssize_t rv;
+    ssize_t s;
+
+    pth_implicit_init();
+    pth_debug2("pth_sendmsg_ev: enter from thread \"%s\"", pth_gctx_get()->pth_current->name);
+
+    if (!pth_util_fd_valid(fd))
+        return pth_error(-1, EBADF);
+
+    /* force filedescriptor into non-blocking mode */
+    if ((fdmode = pth_fdmode(fd, PTH_FDMODE_NONBLOCK)) == PTH_FDMODE_ERROR)
+        return pth_error(-1, EBADF);
+
+    /* NOTE from now on we need to return via the done goto to make sure the fd returns to
+     * its old blocking/nonblocking mode */
+
+    /* poll filedescriptor if not already in non-blocking operation */
+    if (fdmode != PTH_FDMODE_NONBLOCK)
+    {
+        if (!pth_util_fd_valid(fd))
+        {
+            pth_fdmode(fd, fdmode);
+            rv = pth_error(-1, EBADF);
+            goto done;
+        }
+
+        ev = pth_event(PTH_EVENT_FD | PTH_UNTIL_FD_WRITEABLE, fd);
+        if (ev == NULL)
+        {
+            rv = pth_error(-1, errno);
+            goto done;
+        }
+
+        pth_wait(ev);
+
+        int ev_occurred = pth_event_status(ev) == PTH_STATUS_OCCURRED;
+        pth_event_free(ev, PTH_FREE_THIS);
+
+        /* now perform the actual send operation */
+        while ((rv = pth_sc(sendmsg)(fd, message, flags)) < 0 && errno == EINTR)
+            ;
+    }
+    else
+    {
+        /* just perform the actual send operation */
+        while ((rv = pth_sc(sendmsg)(fd, message, flags)) < 0 && errno == EINTR)
+            ;
+    }
+
+done:
+    /* restore filedescriptor mode */
+    pth_shield { pth_fdmode(fd, fdmode); }
+
+    pth_debug2("pth_sendmsg_ev: leave to thread \"%s\"", pth_gctx_get()->pth_current->name);
+    return rv;
+}
+
+ssize_t pth_recvmsg(int fd, struct msghdr *message, int flags)
+{
+    pth_event_t ev;
+    int fdmode;
+    int n;
+
+    pth_implicit_init();
+    pth_debug2("pth_recvmsg: enter from thread \"%s\"", pth_gctx_get()->pth_current->name);
+
+    /* POSIX compliance */
+    if (!pth_util_fd_valid(fd))
+        return pth_error(-1, EBADF);
+    if (message->msg_iovlen < 0 || message->msg_iovlen > UIO_MAXIOV)
+        return pth_error(-1, EINVAL);
+    if (message->msg_iovlen == 0)
+        return 0;
+
+    /* check mode of filedescriptor */
+    if ((fdmode = pth_fdmode(fd, PTH_FDMODE_POLL)) == PTH_FDMODE_ERROR)
+        return pth_error(-1, EBADF);
+
+    /* poll filedescriptor if not already in non-blocking operation */
+    if (fdmode == PTH_FDMODE_BLOCK)
+    {
+        /* let thread sleep until fd is readable or event occurs */
+        ev = pth_event(PTH_EVENT_FD | PTH_UNTIL_FD_READABLE, fd);
+        if (ev == NULL)
+            return pth_error(-1, errno);
+
+        n = pth_wait(ev);
+
+        int ev_occurred = pth_event_status(ev) == PTH_STATUS_OCCURRED;
+        pth_event_free(ev, PTH_FREE_THIS);
+    }
+
+    while ((n = pth_sc(recvmsg)(fd, message, flags)) < 0 && errno == EINTR)
+        ;
+
+    pth_debug2("pth_recvmsg: leave to thread \"%s\"", pth_gctx_get()->pth_current->name);
+    return n;
+}
