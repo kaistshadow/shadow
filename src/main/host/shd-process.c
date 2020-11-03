@@ -2849,6 +2849,17 @@ int process_emu_setsockopt(Process* proc, int fd, int level, int optname, const 
                     break;
                 }
             }
+        } else if (level == IPPROTO_IP) {
+            if(optname == IP_TOS) {
+                result = setsockopt(fd, level, optname, optval, optlen);
+            }
+            else {
+                warning("setsockopt IPPROTO_IP option %i not implemented", level);
+                _process_setErrno(proc, ENOSYS);
+                result = -1;
+            }
+        } else if (level == SO_BROADCAST) {
+            result = setsockopt(fd, level, optname, optval, optlen);
         } else {
             warning("setsockopt level %i not implemented", level);
             _process_setErrno(proc, ENOSYS);
