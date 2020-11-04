@@ -2693,7 +2693,7 @@ int process_emu_setsockopt(Process* proc, int fd, int level, int optname, const 
                 _process_setErrno(proc, ENOSYS);
                 result = -1;
             }
-        } else if (level == SO_BROADCAST) {
+        } else if (level == IPPROTO_TCP) {
             result = setsockopt(fd, level, optname, optval, optlen);
         } else {
             warning("setsockopt level %i not implemented", level);
