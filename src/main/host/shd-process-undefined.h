@@ -13,7 +13,6 @@ PROCESS_EMU_UNSUPPORTED(int, ENOSYS, pthread_getattr_default_np);
 PROCESS_EMU_UNSUPPORTED(int, ENOSYS, pthread_setattr_default_np);
 PROCESS_EMU_UNSUPPORTED(int, ENOSYS, pthread_setschedprio);
 PROCESS_EMU_UNSUPPORTED(int, ENOSYS, pthread_getname_np);
-PROCESS_EMU_UNSUPPORTED(int, ENOSYS, pthread_setname_np);
 PROCESS_EMU_UNSUPPORTED(int, ENOSYS, pthread_setaffinity_np);
 PROCESS_EMU_UNSUPPORTED(int, ENOSYS, pthread_getaffinity_np);
 PROCESS_EMU_UNSUPPORTED(int, ENOSYS, pthread_mutex_timedlock);

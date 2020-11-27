@@ -7964,6 +7964,15 @@ int process_emu_pthread_cond_timedwait(Process* proc, pthread_cond_t *cond, pthr
     return ret;
 }
 
+int process_emu_pthread_setname_np(Process* proc, pthread_t __target_thread, const char *__name) {
+    ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
+    int ret = 0;
+    ret = pthread_setname_np(__target_thread, __name);
+    warning("TEST TEST %s", __name);
+    _process_changeContext(proc, PCTX_SHADOW, prevCTX);
+    return ret;
+}
+
 /* BLEEP related functions*/
 // BLEEP attacker support
 int process_emu_shadow_bind(Process* proc, int fd, const struct sockaddr* addr, socklen_t len) {

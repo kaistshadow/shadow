@@ -423,7 +423,7 @@ int process_emu_pthread_cond_broadcast(Process* proc, pthread_cond_t *cond);
 int process_emu_pthread_cond_signal(Process* proc, pthread_cond_t *cond);
 int process_emu_pthread_cond_wait(Process* proc, pthread_cond_t *cond, pthread_mutex_t *mutex);
 int process_emu_pthread_cond_timedwait(Process* proc, pthread_cond_t *cond, pthread_mutex_t *mutex, const struct timespec *abstime);
-
+int process_emu_pthread_setname_np(Process* proc, pthread_t __target_thread, const char *__name);
 
 pid_t process_emu_fork(Process* proc);
 unsigned int process_emu_sleep(Process* proc, unsigned int sec);
