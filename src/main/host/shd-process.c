@@ -7968,7 +7968,6 @@ int process_emu_pthread_setname_np(Process* proc, pthread_t __target_thread, con
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
     int ret = 0;
     ret = pthread_setname_np(__target_thread, __name);
-    warning("TEST TEST %s", __name);
     _process_changeContext(proc, PCTX_SHADOW, prevCTX);
     return ret;
 }
