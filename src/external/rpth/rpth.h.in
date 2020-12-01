@@ -563,6 +563,8 @@ extern ssize_t        pth_recvfrom(int, void *, size_t, int, struct sockaddr *, 
 extern ssize_t        pth_sendto(int, const void *, size_t, int, const struct sockaddr *, socklen_t);
 extern ssize_t        pth_pread(int, void *, size_t, off_t);
 extern ssize_t        pth_pwrite(int, const void *, size_t, off_t);
+extern ssize_t        pth_sendmsg(int, struct msghdr *, int);
+extern ssize_t        pth_recvmsg(int, struct msghdr *, int);
 
 END_DECLARATION
 
@@ -591,6 +593,8 @@ END_DECLARATION
 #define sendto        pth_sendto
 #define pread         pth_pread
 #define pwrite        pth_pwrite
+#define sendmsg       pth_sendmsg
+#define recvmsg       pth_recvmsg
 #endif
 
     /* backward compatibility (Pth < 1.5.0) */
@@ -599,4 +603,3 @@ END_DECLARATION
      || pth_event_status(ev) == PTH_STATUS_FAILED   )
 
 #endif /* _PTH_H_ */
-

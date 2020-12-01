@@ -55,6 +55,8 @@
 #define send          __pth_sys_send
 #define recvfrom      __pth_sys_recvfrom
 #define sendto        __pth_sys_sendto
+#define sendmsg       __pth_sys_sendmsg
+#define recvmsg       __pth_sys_recvmsg
 #define pread         __pth_sys_pread
 #define pwrite        __pth_sys_pwrite
 
@@ -106,6 +108,8 @@ const int pth_syscall_hard = PTH_SYSCALL_HARD;
 #undef send
 #undef recvfrom
 #undef sendto
+#undef sendmsg
+#undef recvmsg
 #undef pread
 #undef pwrite
 
@@ -157,6 +161,8 @@ intern pth_syscall_fct_tab_t pth_syscall_fct_tab[] = {
 #define PTH_SCF_sendto        19
 #define PTH_SCF_pread         20
 #define PTH_SCF_pwrite        21
+#define PTH_SCF_sendmsg       22
+#define PTH_SCF_recvmsg       23
     { "fork",        NULL },
     { "waitpid",     NULL },
     { "system",      NULL },
@@ -179,6 +185,8 @@ intern pth_syscall_fct_tab_t pth_syscall_fct_tab[] = {
     { "sendto",      NULL },
     { "pread",       NULL },
     { "pwrite",      NULL },
+    { "sendmsg",     NULL },
+    { "recvmsg",      NULL },
     { NULL,          NULL }
 };
 #endif
@@ -721,5 +729,45 @@ intern ssize_t pth_sc_sendto(int fd, const void *buf, size_t nbytes, int flags, 
 #endif
 }
 
-#endif /* PTH_SYSCALL_HARD */
+ssize_t sendmsg(int, struct msghdr *, int flags*);
+ssize_t sendmsg(int fd, struct msghdr *message, int flags)
+{
+    /* external entry point for application */
+    pth_implicit_init();
+    return pth_sendmsg(fd, message, flags);
+}
+intern ssize_t pth_sc_sendmsg(int fd, struct msghdr *message, int flags)
+{
+    /* internal exit point for Pth */
+    if (pth_syscall_fct_tab[PTH_SCF_sendmsg].addr != NULL)
+        return ((ssize_t (*)(int, struct msghdr *, int))
+               pth_syscall_fct_tab[PTH_SCF_sendmsg].addr)
+               (fd, message, flags);
+#if defined(HAVE_SYSCALL) && defined(SYS_sendmsg)
+    else return (ssize_t)syscall(SYS_sendmsg, fd, message, flags);
+#else
+    else PTH_SYSCALL_ERROR(-1, ENOSYS, "sendmsg");
+#endif
+}
+ssize_t recvmsg(int, struct msghdr *, int flags*);
+ssize_t recvmsg(int fd, struct msghdr *message, int flags)
+{
+    /* external entry point for application */
+    pth_implicit_init();
+    return pth_recvmsg(fd, message, flags);
+}
+intern ssize_t pth_sc_recvmsg(int fd, struct msghdr *message, int flags)
+{
+    /* internal exit point for Pth */
+    if (pth_syscall_fct_tab[PTH_SCF_recvmsg].addr != NULL)
+        return ((ssize_t (*)(int, struct msghdr *, int))
+               pth_syscall_fct_tab[PTH_SCF_recvmsg].addr)
+               (fd, message, flags);
+#if defined(HAVE_SYSCALL) && defined(SYS_recvmsg)
+    else return (ssize_t)syscall(SYS_recvmsg, fd, message, flags);
+#else
+    else PTH_SYSCALL_ERROR(-1, ENOSYS, "recvmsg");
+#endif
+}
 
+#endif /* PTH_SYSCALL_HARD */
