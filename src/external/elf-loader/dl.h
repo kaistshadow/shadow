@@ -4,7 +4,6 @@
 
 #include <dlfcn.h>
 int dl_lmid_swap_tls (Lmid_t lmid, pthread_t *t1, pthread_t *t2);
-int dl_lmid_copy_tls (Lmid_t lmid, pthread_t *t1, pthread_t *t2);
 // custom flags
 
 // dl(m)open() flag. Specifies that the loaded file should be placed in load

@@ -104,8 +104,3 @@ dl_lmid_swap_tls (Lmid_t lmid, pthread_t *t1, pthread_t *t2)
 {
   return vdl_dl_lmid_swap_tls_public (lmid, t1, t2);
 }
-EXPORT int
-dl_lmid_copy_tls (Lmid_t lmid, pthread_t *t1, pthread_t *t2)
-{
-    return vdl_dl_lmid_copy_tls_public (lmid, t1, t2);
-}

@@ -15,6 +15,5 @@ global:
 	vdl_dl_lmid_add_symbol_remap_public;
 	vdl_dl_lmid_add_callback_public;
 	vdl_dl_lmid_swap_tls_public;
-	vdl_dl_lmid_copy_tls_public;
 	libc_freeres_interceptor;
 };
