@@ -26,6 +26,12 @@ gboolean check_ipc_server() {
                 server_exist = TRUE;
         }
     }
+    // TODO : zmq_ctx_destroy is not working. It results in deadlock.
+//    if (!server_exist) {
+//        zmq_close(zmq_req_socket);
+//        zmq_ctx_destroy(shadow_ipc_conf.zmq_context);
+//    }
+
     return server_exist;
 }
 
