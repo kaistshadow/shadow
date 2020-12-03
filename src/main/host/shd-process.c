@@ -78,7 +78,7 @@
 #define O_DIRECT 040000
 #endif
 
-#define PROC_PTH_STACK_SIZE 1024*1024
+#define PROC_PTH_STACK_SIZE 1280*1024//128*1024
 
 #include "shadow.h"
 
@@ -230,8 +230,6 @@ struct _Process {
     /* any other threads created by the program are auxiliary threads */
     GHashTable* programAuxThreads;
 
-    /* Shadow uses this to swap tls*/
-    buffer_threads * buf_threads;
     /*
      * Distinguishes which context we are in. Whenever the flow of execution
      * passes into the plug-in, this is FALSE, and whenever it comes back to
@@ -1111,7 +1109,6 @@ static void* _process_executeMain(Process* proc) {
     utility_assert(proc->plugin.main);
     proc->returnCode = proc->plugin.main(proc->argc, proc->argv);
 
-    clean_up_buffer_threads(proc);
     /* the program's main function has returned or exited, this process has completed */
     _process_changeContext(proc, PCTX_PLUGIN, PCTX_SHADOW);
 
@@ -1211,8 +1208,7 @@ static void _process_start(Process* proc) {
 
     /* pth_gctx_new implicitly created a 'main' thread, which shadow now runs in */
     proc->shadowThread = pth_self();
-    /*comment*/
-    _buffer_threads_add(proc, &(proc->shadowThread), buf_thread_shadow);
+
     /* it also created a special epollfd which we will use to continue the pth scheduler */
     proc->epollfd = pth_gctx_get_main_epollfd(proc->tstate);
 
@@ -1231,8 +1227,7 @@ static void _process_start(Process* proc) {
     pth_attr_set(programMainThreadAttr, PTH_ATTR_STACK_SIZE, PROC_PTH_STACK_SIZE);
     proc->programMainThread = pth_spawn(programMainThreadAttr, (PthSpawnFunc)_process_executeMain, proc);
     pth_attr_destroy(programMainThreadAttr);
-    /*comment*/
-    _buffer_threads_add(proc, &(proc->programMainThread), buf_thread_programMain);
+
     /* now that our pth state is set up, load the plugin */
     _process_changeContext(proc, PCTX_PTH, PCTX_SHADOW);
     gdouble secondsToInitPth = g_timer_elapsed(initTimer, NULL);
@@ -1747,6 +1742,19 @@ static gint _process_emu_ioctlHelper(Process* proc, int fd, unsigned long int re
                 gsize bufferLength = tcp_getOutputBufferLength(tcpSocket);
                 gint* lengthOut = (gint*)argp;
                 *lengthOut = (gint)bufferLength;
+            } else if(request == FIONBIO) {
+                //result = fcntl(fd, F_SETFL, argp);
+                ProcessContext prevCTX2 = _process_changeContext(proc, proc->activeContext, prevCTX);
+                if((gint*)argp) { //*(unsigned long*)
+                    //set non blocking flag
+                    int flags = fcntl(fd, F_GETFL, 0);
+                    fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+                } else {
+                    //clear non blocking flag
+                    int flags = fcntl(fd, F_GETFL, 0);
+                    fcntl(fd, F_SETFL, flags & ~O_NONBLOCK);
+                }
+                _process_changeContext(proc, proc->activeContext, prevCTX2);
             } else {
                 result = ENOTTY;
             }
@@ -2223,7 +2231,7 @@ int process_emu_epoll_pwait(Process* proc, int epfd, struct epoll_event *events,
 int process_emu_socket(Process* proc, int domain, int type, int protocol) {
     gboolean isNonBlockSet = FALSE;
     gboolean isCloseOnExecuteSet = FALSE;
-
+    //printf("process_emu_socket: %x, %x, %x, %x, %x\n", type, SOCK_NONBLOCK, SOCK_CLOEXEC, domain, AF_UNIX);
     /* clear non-blocking flags if set to get true type */
     if(type & SOCK_NONBLOCK) {
         type = type & ~SOCK_NONBLOCK;
@@ -2439,13 +2447,69 @@ ssize_t process_emu_sendto(Process* proc, int fd, const void *buf, size_t n, int
     return ret;
 }
 
-ssize_t process_emu_sendmsg(Process* proc, int fd, const struct msghdr *message, int flags) {
-    /* TODO implement */
-    ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
-    warning("sendmsg not implemented");
-    _process_setErrno(proc, ENOSYS);
+ssize_t process_emu_sendmsg(Process *proc, int fd, const struct msghdr *message, int flags)
+{
+   ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
+   gssize ret = 0;
+
+    if(!host_isShadowDescriptor(proc->host, fd)){
+        gint osfd = host_getOSHandle(proc->host, fd);
+        if (osfd >= 0) {
+            ret = sendmsg(osfd, message, flags);
+            if(ret < 0) {
+                _process_setErrno(proc, errno);
+            }
+        } else {
+            _process_setErrno(proc, EBADF);
+            ret = -1;
+        }
+    } else if(prevCTX == PCTX_PLUGIN) {
+        _process_changeContext(proc, PCTX_SHADOW, PCTX_PTH);
+        utility_assert(proc->tstate == pth_gctx_get());
+        ret = pth_sendmsg(fd, message, flags);
+        _process_changeContext(proc, PCTX_PTH, PCTX_SHADOW);
+        if(ret == -1) {
+            _process_setErrno(proc, errno);
+        }
+    } else {
+        if(message->msg_iovlen < 0 || message->msg_iovlen > IOV_MAX) {
+            _process_setErrno(proc, EINVAL);
+            ret = -1;
+        } else {
+            /* figure out how much they want to write total */
+            int i = 0;
+            size_t totalIOLength = 0;
+            for(i = 0; i < message->msg_iovlen; i++) {
+                totalIOLength += message->msg_iov[i].iov_len;
+            }
+
+            if(totalIOLength == 0) {
+                ret = 0;
+            } else {
+                /* get a temporary buffer and write to it */
+                void* tempBuffer = g_malloc0(totalIOLength);
+                size_t bytesCopied = 0;
+                for(i = 0; i < message->msg_iovlen; i++) {
+                    g_memmove(tempBuffer+bytesCopied, message->msg_iov[i].iov_base, message->msg_iov[i].iov_len);
+                    bytesCopied += message->msg_iov[i].iov_len;
+                }
+
+                ssize_t totalBytesWritten = 0;
+                if(bytesCopied > 0) {
+                    /* try to write all of the bytes we got from the iov buffers */
+                    _process_changeContext(proc, PCTX_SHADOW, prevCTX);
+                    totalBytesWritten = process_emu_write(proc, fd, tempBuffer, bytesCopied);
+                    _process_changeContext(proc, prevCTX, PCTX_SHADOW);
+                }
+
+                g_free(tempBuffer);
+                ret = totalBytesWritten;
+            }
+        }
+    }
+
     _process_changeContext(proc, PCTX_SHADOW, prevCTX);
-    return -1;
+    return ret;
 }
 
 ssize_t process_emu_recv(Process* proc, int fd, void *buf, size_t n, int flags) {
@@ -2484,13 +2548,84 @@ ssize_t process_emu_recvfrom(Process* proc, int fd, void *buf, size_t n, int fla
     return ret;
 }
 
-ssize_t process_emu_recvmsg(Process* proc, int fd, struct msghdr *message, int flags) {
-    /* TODO implement */
+ssize_t process_emu_recvmsg(Process *proc, int fd, struct msghdr *message, int flags)
+{
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
-    warning("recvmsg not implemented");
-    _process_setErrno(proc, ENOSYS);
+    gssize ret = 0;
+    if (!host_isShadowDescriptor(proc->host, fd))
+    {
+        gint osfd = host_getOSHandle(proc->host, fd);
+        if (osfd >= 0)
+        {
+            ret = recvmsg(osfd, message, flags);
+            if (ret < 0)
+            {
+                _process_setErrno(proc, errno);
+            }
+        }
+        else
+        {
+            _process_setErrno(proc, EBADF);
+            ret = -1;
+        }
+    }
+    else if (prevCTX == PCTX_PLUGIN)
+    {
+        _process_changeContext(proc, PCTX_SHADOW, PCTX_PTH);
+        utility_assert(proc->tstate == pth_gctx_get());
+        ret = pth_recvmsg(fd, message, flags);
+        _process_changeContext(proc, PCTX_PTH, PCTX_SHADOW);
+        if (ret == -1)
+        {
+            _process_setErrno(proc, errno);
+        }
+    }
+    else
+    {
+        if (message->msg_iovlen < 0 || message->msg_iovlen > IOV_MAX)
+        {
+            _process_setErrno(proc, EINVAL);
+            ret = -1;
+        }
+        else
+        {
+            /* figure out how much they want to read total */
+            int i = 0;
+            size_t totalIOLength = 0;
+            for (i = 0; i < message->msg_iovlen; i++)
+            {
+                totalIOLength +=  message->msg_iov[i].iov_len;
+            }
+            if (totalIOLength == 0)
+            {
+                ret = 0;
+            }
+            else
+            {
+                /* get a temporary buffer and read to it */
+                void *tempBuffer = g_malloc0(totalIOLength);
+                _process_changeContext(proc, PCTX_SHADOW, prevCTX);
+                ssize_t totalBytesRead = process_emu_read(proc, fd, tempBuffer, totalIOLength);
+                _process_changeContext(proc, prevCTX, PCTX_SHADOW);
+                if (totalBytesRead > 0)
+                {
+                    /* place all of the bytes we read in the iov buffers */
+                    size_t bytesCopied = 0;
+                    for (i = 0; i < message->msg_iovlen; i++)
+                    {
+                        size_t bytesRemaining = (size_t)(totalBytesRead - bytesCopied);
+                        size_t bytesToCopy = MIN(bytesRemaining, message->msg_iov[i].iov_len);
+                        g_memmove(message->msg_iov[i].iov_base, tempBuffer + bytesCopied, bytesToCopy);
+                        bytesCopied += bytesToCopy;
+                    }
+                }
+                g_free(tempBuffer);
+                ret = totalBytesRead;
+            }
+        }
+    }
     _process_changeContext(proc, PCTX_SHADOW, prevCTX);
-    return -1;
+    return ret;
 }
 
 int process_emu_getsockopt(Process* proc, int fd, int level, int optname, void* optval, socklen_t* optlen) {
@@ -2679,6 +2814,17 @@ int process_emu_setsockopt(Process* proc, int fd, int level, int optname, const 
                     break;
                 }
             }
+        } else if (level == IPPROTO_IP) {
+            if(optname == IP_TOS) {
+                result = setsockopt(fd, level, optname, optval, optlen);
+            }
+            else {
+                warning("setsockopt IPPROTO_IP option %i not implemented", level);
+                _process_setErrno(proc, ENOSYS);
+                result = -1;
+            }
+        } else if (level == IPPROTO_TCP) {
+            result = setsockopt(fd, level, optname, optval, optlen);
         } else {
             warning("setsockopt level %i not implemented", level);
             _process_setErrno(proc, ENOSYS);
@@ -2717,7 +2863,6 @@ int process_emu_listen(Process* proc, int fd, int n) {
 int process_emu_accept(Process* proc, int fd, struct sockaddr* addr, socklen_t* addr_len)  {
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
     gint ret = 0;
-
     if(prevCTX == PCTX_PLUGIN) {
         _process_changeContext(proc, PCTX_SHADOW, PCTX_PTH);
         utility_assert(proc->tstate == pth_gctx_get());
@@ -2756,7 +2901,6 @@ int process_emu_accept(Process* proc, int fd, struct sockaddr* addr, socklen_t* 
             }
         }
     }
-
     _process_changeContext(proc, PCTX_SHADOW, prevCTX);
     return ret;
 }
@@ -4865,7 +5009,7 @@ int process_emu_getaddrinfo(Process* proc, const char *name, const char *service
         _process_setErrno(proc, EINVAL);
         return EAI_NONAME;
     }
-
+    int compare = strcmp("0.0.0.0", name);
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
 
     gint result = 0;
@@ -4874,7 +5018,7 @@ int process_emu_getaddrinfo(Process* proc, const char *name, const char *service
     in_addr_t ip = INADDR_NONE;
     in_port_t port = 0;
 
-    if(name == NULL) {
+    if(compare == 0 || name == NULL) {
         if(hints && (hints->ai_flags & AI_PASSIVE)) {
             ip = htonl(INADDR_ANY);
         } else {
@@ -5438,6 +5582,9 @@ int process_emu_syscall(Process* proc, int number, va_list ap) {
 #endif
 #if defined SYS_gettimeofday
         case SYS_gettimeofday:
+#endif
+#if defined SYS_ioctl
+        case SYS_ioctl:
 #endif
 #if defined SYS_listen
         case SYS_listen:
@@ -6276,16 +6423,6 @@ int process_emu_pthread_create(Process* proc, pthread_t *thread, const pthread_a
                 g_hash_table_insert(proc->programAuxThreads, auxThread, GUINT_TO_POINTER(threadID));
                 ret = 0;
             }
-            /*comment*/
-            pthread_t buf_thread_aux;
-
-            gint returnVal = pthread_create(&(buf_thread_aux), NULL, sleep_tls, NULL);
-            if(returnVal != 0) {
-                ;//return NULL;
-            }
-            pthread_setname_np(buf_thread_aux, "aux_thread_helper");
-            //_buffer_threads_add(proc, &(auxThread), &buf_thread_aux);
-            _buffer_threads_add(proc, thread, buf_thread_aux);
             _process_changeContext(proc, PCTX_SHADOW, PCTX_PTH);
         }
 
@@ -7010,9 +7147,10 @@ int process_emu_pthread_mutexattr_setpshared(Process* proc, pthread_mutexattr_t 
         ret = EINVAL;
         _process_setErrno(proc, EINVAL);
     } else {
-        warning("pthread_mutexattr_setpshared() is not supported by pth or by shadow");
-        ret = ENOSYS;
-        _process_setErrno(proc, ENOSYS);
+//        warning("pthread_mutexattr_setpshared() is not supported by pth or by shadow");
+//        ret = ENOSYS;
+//        _process_setErrno(proc, ENOSYS);
+        ret = 0 ;
     }
     _process_changeContext(proc, PCTX_SHADOW, prevCTX);
     return ret;
@@ -8003,6 +8141,14 @@ int process_emu_pthread_cond_timedwait(Process* proc, pthread_cond_t *cond, pthr
     return ret;
 }
 
+int process_emu_pthread_setname_np(Process* proc, pthread_t __target_thread, const char *__name) {
+    ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
+    int ret = 0;
+    ret = pthread_setname_np(__target_thread, __name);
+    _process_changeContext(proc, PCTX_SHADOW, prevCTX);
+    return ret;
+}
+
 /* BLEEP related functions*/
 // BLEEP attacker support
 int process_emu_shadow_bind(Process* proc, int fd, const struct sockaddr* addr, socklen_t len) {
@@ -8102,4 +8248,3 @@ void process_emu_hj_interposer_test(Process* proc) {
 #include "shd-process-undefined.h"
 
 #undef PROCESS_EMU_UNSUPPORTED
-
