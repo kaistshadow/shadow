@@ -51,7 +51,6 @@ PRELOADDEF(return, int, syscall, (int a, ...), a);
 
 /* BLEEP related functions*/
 // BLEEP library support
-PRELOADDEF(return, int, puts_temp, (const char *a), a);
 PRELOADDEF(return, int, shadow_pipe2, (int a[2], int b), a, b);
 PRELOADDEF(return, int, shadow_push_eventlog, (const char *a), a);
 PRELOADDEF(return, int, shadow_usleep, (unsigned int a), a);
@@ -70,4 +69,17 @@ PRELOADDEF(return, int, shadow_assign_virtual_id, (void));
 
 // Memory Instrumentation Marker Functions
 PRELOADDEF(return, void, shadow_instrumentation_marker_set, (int file_symbol, int line_cnt), file_symbol, line_cnt);
-PRELOADDEF(return, void, hj_interposer_test, (void));
+PRELOADDEF(return, int, copy_dat_files, (int fileno), fileno);
+PRELOADDEF(return, int, compare_dat_files, (int fileno), fileno);
+PRELOADDEF(return, char*, make_actual_path,(int fileno),fileno);
+PRELOADDEF(return, char*, get_dat_file_path, (int fileno),fileno);
+PRELOADDEF(return, char*, get_tmp_file_path,(void));
+PRELOADDEF(return, char*, get_actual_path,(int fileno),fileno);
+
+PRELOADDEF(return, void, shadow_bitcoin_register_hash,(const char hash[]),hash);
+PRELOADDEF(return, int, shadow_bitcoin_check_hash,(const char hash[]),hash);
+
+//BLEEP TPS interface
+PRELOADDEF(return, void, update_log_map,(const char prevblockhash[], const char blockhash[],const int txcount, const int height),prevblockhash, blockhash, txcount, height);
+PRELOADDEF(return, int, get_tx_total_count,(void));
+PRELOADDEF(return, int, get_tx_count,(const char blockhash[]),blockhash);

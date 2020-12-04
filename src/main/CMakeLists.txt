@@ -120,11 +120,19 @@ set(REMORA_SRC
 add_library(shadow-remora SHARED ${REMORA_SRC})
 install(TARGETS shadow-remora DESTINATION lib)
 
+## attach BLEEP ADDON library module
+SET(BLEEP_ADDON_SRC
+    bleep_addon/bleep_addon.cpp
+    bleep_addon/bitcoin_log_map/log_map.cpp
+)
+add_library(bleep_addon SHARED ${BLEEP_ADDON_SRC})
+install(TARGETS bleep_addon DESTINATION lib)
+
 ## specify the main shadow executable, build, link, and install
 add_executable(shadow ${shadow_srcs})
-add_dependencies(shadow shadow-remora shadow-interpose-helper elf-loader rpth)
+add_dependencies(shadow shadow-remora shadow-interpose-helper elf-loader rpth bleep_addon)
 ## 'shadow-interpose-helper' and 'vdl' are cmake targets, the rest are external libs for which '-l' is needed
-target_link_libraries(shadow shadow-interpose-helper vdl -lrpth -lzmq
+target_link_libraries(shadow shadow-interpose-helper vdl bleep_addon -lrpth -lzmq
    ${CMAKE_THREAD_LIBS_INIT} ${M_LIBRARIES} ${DL_LIBRARIES} ${RT_LIBRARIES}
    ${IGRAPH_LIBRARIES} ${GLIB_LIBRARIES} shadow-remora)
 install(TARGETS shadow DESTINATION bin)

@@ -452,7 +452,75 @@ int process_emu_shadow_assign_virtual_id(Process* proc);
 
 // Memory Instrumentation Marker Functions
 void process_emu_shadow_instrumentation_marker_set(Process* proc, int file_symbol, int line_cnt);
-void process_emu_hj_interposer_test(Process* proc);
+char* process_emu_get_dat_file_path(Process* proc,int fileno);
+char* process_emu_get_tmp_file_path(Process* proc);
+char* process_emu_get_actual_path(Process* proc,int fileno);
+
+int process_emu_copy_dat_files(Process* proc, int fileno);
+int process_emu_compare_dat_files(Process* proc, int fileno);
+
+//hyeojin made for compare dat_files
+#define big_endian 0
+#define little_endian 1
+void PrintHex(unsigned char* data, int start, int size, unsigned char* dest) ;
+unsigned int hexToInt(unsigned char* data, int size, int endianness);
+unsigned int calcVarInt(unsigned char * data, int *bytepos) ;
+void datParser(unsigned char* dat, unsigned int size,unsigned char * lastBlockMerkleRoot);
+
+//hyeojin made for storage hash table
+typedef struct _Hashlist{
+    struct _Hashlist *next, *prev;
+    int fileno;
+    char* actual_path;
+    char* lastBlockHashMerkleRoot;
+    unsigned refCnt;
+
+}Hashlist;
+
+typedef struct _HashTblEntry{
+    Hashlist* list;
+    int listcnt;
+}HashTblEntry;
+
+typedef struct _HashTable{
+    HashTblEntry* ents;
+}HashTable;
+
+//structure for hashNodetable
+typedef struct _HashNodelist {
+    struct _HashNodelist *next, *prev;
+    unsigned int nodeID;
+    char *actual_path;
+    int fileno;
+}HashNodelist;
+typedef struct _HashNodeTblEntry{
+    HashNodelist* list;
+    int lastFileNo;
+}HashNodeTblEntry;
+
+typedef struct _HashNodeTable{
+    HashNodeTblEntry* ents;
+}HashNodeTable;
+
+HashTable *FileInfotbl;
+HashNodeTable *NodeInfotbl;
+void createHashTables();
+void AddHashData(HashTable *hashTable, int fileno, char* actual_path, char* lastBlockHash);
+char* getLastBlockHash(HashTable *hashTable, int fileno);
+void DeleteHashData(HashTable *hashTable,int key, char* actual_path);
+void DeleteNodeHashData(HashNodeTable *hashNodeTable,int key);
+void printHashTable(HashNodeTable *hashtable,int key);
+
+void AddNodeHashData(HashNodeTable *hashNodeTable,unsigned int nodeid,int fileno,char* path);
+void AddDataToHashTable(int fileno, char* path, char * merkleroothash, unsigned int nodeid);
+
+void process_emu_shadow_bitcoin_register_hash(Process* proc, const char hash[]);
+int process_emu_shadow_bitcoin_check_hash(Process* proc, const char hash[]);
+
+//Hyeoin add for log map
+void process_emu_update_log_map(Process* proc, const char prevblockhash[], const char blockhash[], const int txcount, const int height);
+int process_emu_get_tx_total_count(Process* proc);
+int process_emu_get_tx_count(Process* proc, const char blockhash[]);
 
 #define PROCESS_EMU_UNSUPPORTED(returntype, returnval, functionname) \
   returntype process_emu_##functionname(Process* proc, ...);

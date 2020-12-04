@@ -156,9 +156,11 @@ static void _interposer_globalInitializeHelper() {
 static void _interposer_globalInitialize() {
     /* ensure we recursively intercept during initialization */
     if(!__sync_fetch_and_add(&isRecursive, 1)){
+//    if(!(isRecursive++)){
         _interposer_globalInitializeHelper();
     }
     __sync_fetch_and_sub(&isRecursive, 1);
+//    (isRecursive--);
 }
 
 /* this function is called when the library is loaded,
@@ -183,7 +185,8 @@ static inline Process* _doEmulate() {
     }
     Process* proc = NULL;
     /* recursive calls always go to libc */
-    if(!__sync_fetch_and_add(&isRecursive, 1)) {
+    if(!__sync_fetch_and_add(&isRecursive, 1)){
+//    if(!(isRecursive++)) {
         proc = director.shadowIsLoaded && (*(&disableCount)) <= 0 && worker_isAlive() ? worker_getActiveProcess() : NULL;
         /* check if the shadow intercept library is loaded yet, but dont fail if its not */
         if(proc) {
@@ -195,6 +198,7 @@ static inline Process* _doEmulate() {
         }
     }
     __sync_fetch_and_sub(&isRecursive, 1);
+//    (isRecursive--);
     return proc;
 }
 
@@ -434,17 +438,6 @@ void abort(void) {
     }
 }
 
-// plugin -> shadow
-int puts_temp(const char *str) {
-    Process* proc = NULL;
-    if((proc = _doEmulate()) != NULL) {
-        return process_emu_puts(proc, str);
-    } else {
-        ENSURE(puts);
-        return director.next.puts(str);
-    }
-}
-
 int shadow_pipe2(int fds[2], int flag) {
     Process* proc = NULL;
     if((proc = _doEmulate()) != NULL) {
@@ -543,12 +536,101 @@ void shadow_instrumentation_marker_set(int file_symbol, int line_cnt) {
     }
 }
 
-void hj_interposer_test() {
+char* get_dat_file_path(int fileno) {
     Process* proc = NULL;
     if((proc = _doEmulate()) != NULL) {
-        return process_emu_hj_interposer_test(proc);
+        return process_emu_get_dat_file_path(proc,fileno);
     } else {
-        ENSURE(hj_interposer_test);
-        return director.next.hj_interposer_test();
+        ENSURE(get_dat_file_path);
+        return director.next.get_dat_file_path(fileno);
+    }
+}
+
+char* get_tmp_file_path() {
+    Process* proc = NULL;
+    if((proc = _doEmulate()) != NULL) {
+        return process_emu_get_tmp_file_path(proc);
+    } else {
+        ENSURE(get_tmp_file_path);
+        return director.next.get_tmp_file_path();
+    }
+}
+
+char* get_actual_path(int fileno) {
+    Process* proc = NULL;
+    if((proc = _doEmulate()) != NULL) {
+        return process_emu_get_actual_path(proc,fileno);
+    } else {
+        ENSURE(get_actual_path);
+        return director.next.get_actual_path(fileno);
+    }
+}
+
+int copy_dat_files(int fileno) {
+    Process* proc = NULL;
+    if((proc = _doEmulate()) != NULL) {
+        return process_emu_copy_dat_files(proc,fileno);
+    } else {
+        ENSURE(copy_dat_files);
+        return director.next.copy_dat_files(fileno);
+    }
+}
+
+int compare_dat_files(int fileno) {
+    Process* proc = NULL;
+    if((proc = _doEmulate()) != NULL) {
+        return process_emu_compare_dat_files(proc,fileno);
+    } else {
+        ENSURE(compare_dat_files);
+        return director.next.compare_dat_files(fileno);
+    }
+}
+
+void shadow_bitcoin_register_hash(const char hash[]) {
+    Process* proc = NULL;
+    if((proc = _doEmulate()) != NULL) {
+        return process_emu_shadow_bitcoin_register_hash(proc,hash);
+    } else {
+        ENSURE(shadow_bitcoin_register_hash);
+        return director.next.shadow_bitcoin_register_hash(hash);
+    }
+}
+int shadow_bitcoin_check_hash(const char hash[]) {
+    Process* proc = NULL;
+    if((proc = _doEmulate()) != NULL) {
+        return process_emu_shadow_bitcoin_check_hash(proc,hash);
+    } else {
+        ENSURE(shadow_bitcoin_check_hash);
+        return director.next.shadow_bitcoin_check_hash(hash);
+    }
+}
+
+void update_log_map(const char prevblockhash[], const char blockhash[],const int txcount, const int height){
+    Process* proc = NULL;
+    if((proc = _doEmulate()) != NULL) {
+        return process_emu_update_log_map(proc, prevblockhash, blockhash, txcount,height);
+    } else {
+        ENSURE(update_log_map);
+        return director.next.update_log_map(prevblockhash, blockhash, txcount, height);
+    }
+}
+
+int get_tx_total_count(){
+    Process* proc = NULL;
+    if((proc = _doEmulate()) != NULL) {
+        return process_emu_get_tx_total_count(proc);
+    } else {
+        ENSURE(get_tx_total_count);
+        return director.next.get_tx_total_count();
+    }
+}
+
+int get_tx_count(const char blockhash[]){
+    Process* proc = NULL;
+    if((proc = _doEmulate()) != NULL) {
+        return process_emu_get_tx_count(proc, blockhash);
+    } else {
+        ENSURE(get_tx_count);
+        return director.next.get_tx_count(blockhash);
     }
 }
