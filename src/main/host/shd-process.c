@@ -5336,6 +5336,20 @@ int process_emu_syscall(Process* proc, int number, va_list ap) {
             break;
         }
 #endif
+#if defined SYS_mmap
+        case SYS_mmap: {
+            void *addr  = va_arg(args, void *);
+            size_t length = va_arg(args, size_t);
+            int prot = va_arg(args, int);
+            int flags = va_arg(args, int);
+            int fd = va_arg(args, int);
+            off_t offset = va_arg(args, off_t);
+            _process_changeContext(proc, PCTX_SHADOW, prevCTX);
+            process_emu_mmap(proc, addr, length, prot, flags, fd, offset);
+            _process_changeContext(proc, prevCTX, PCTX_SHADOW);
+            break;
+        }
+#endif
             /* TODO the following are functions that shadow normally intercepts, and we should handle them */
 
 #if defined SYS_accept
@@ -5460,9 +5474,6 @@ int process_emu_syscall(Process* proc, int number, va_list ap) {
 #endif
 #if defined SYS_lseek
         case SYS_lseek:
-#endif
-#if defined SYS_mmap
-        case SYS_mmap:
 #endif
 #if defined SYS_nanosleep
         case SYS_nanosleep:
