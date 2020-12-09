@@ -696,7 +696,8 @@ static gint _main_helper(Options* options) {
     message("startup checks passed, we are ready to start simulation");
 
     // initialize IPC configuration
-    if (options_doRunDebug(options) && check_ipc_server()) {
+#ifdef DEBUG
+    if (check_ipc_server()) {
         // Currently, multithread is not support for IPC
         int nWorker = options_getNWorkerThreads(options);
         assert(nWorker == 0 &&
@@ -710,6 +711,7 @@ static gint _main_helper(Options* options) {
     } else {
         disable_ipc();
     }
+#endif
 
     /* pause for debugger attachment if the option is set */
     if(options_doRunDebug(options)) {
