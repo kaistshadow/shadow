@@ -1,14 +1,46 @@
 #include "storage_share.h"
 
-#include <vector>
 #include <unordered_map>
 #include <stdio.h>
-#include <string.h>
-#include <unordered_set>
+#include <mutex>
+#include <string>
+
+#include <stdlib.h>
+
+extern "C"
+{
+
+std::mutex _bitcoin_storage_share_FileInfotbl_m;
+std::mutex _bitcoin_storage_share_NodeInfotbl_m;
+
+//hyeojin made for storage hash table
+typedef struct _Hashlist{
+    char* actual_path;
+    unsigned int refCnt;
+}Hashlist;
+
+typedef struct _HashTable{
+    int listcnt;
+    std::unordered_map<std::string, Hashlist> list;
+}HashTable;
+
+std::unordered_map<int, HashTable> FileInfotbl;
+
+//structure for hashNodetable
+typedef struct _HashNodelist {
+    char* actual_path;
+    unsigned char* lastBlockhash;
+}HashNodelist;
+
+typedef struct _HashNodeTable{
+    int lastFileNo;
+    std::unordered_map<int,HashNodelist> list;
+}HashNodeTable;
+std::unordered_map<int, HashNodeTable> NodeInfotbl;
 
 
 //해당 위치부터 사이즈 만큼 읽기(뒤집어 진것 똑바로 읽기)
-void PrintHex(char* data, int start, int size, char* dest) {
+void PrintHex(unsigned char* data, int start, int size, unsigned char* dest) {
     for (int i = 0; i <size; i++){
         if (dest)
             dest[i]= data[start+size-i-1];
@@ -16,16 +48,16 @@ void PrintHex(char* data, int start, int size, char* dest) {
 }
 
 //해당 array print
-void PrintArray(char* data,int size) {
+void PrintArray(unsigned char* data,int size) {
     for (int i = 0; i <size; i++){
-        printf("%02x",data[i]);
+        printf("%02x ",data[i]);
     }
 }
 
 // input: 변환할 hex array, array 길이
 // action: hex값을 그대로 decimal로 전환
 // ouput: 변환된 unsigned int decimal
-unsigned int hexToInt(char* data, int size, int endianness) {
+unsigned int hexToInt(unsigned char* data, int size, int endianness) {
     int res=0;
     if(big_endian) {
         for(int i=0;i<size;i++) {
@@ -42,10 +74,10 @@ unsigned int hexToInt(char* data, int size, int endianness) {
 //input :data, variable 의 memory 주소값을 늘릴 주소
 //action: var int 를 계산법에 따라서 계산
 //output: 계산된 unsigned int
-unsigned int calcVarInt(char * data, int *bytepos) {
+unsigned int calcVarInt(unsigned char * data, int *bytepos) {
 
     unsigned int varint =0;
-    char _data;
+    unsigned char _data;
     PrintHex(data, 0, 1, &_data);
     unsigned int data_num = _data;
     unsigned int fc_num = 0xfc;
@@ -77,7 +109,7 @@ unsigned int calcVarInt(char * data, int *bytepos) {
 
 }
 
-void datParser(char* dat, unsigned int size, char* lastBlockMerkleRoot) {
+void datParser(unsigned char* dat, unsigned int size, unsigned char* lastBlockMerkleRoot) {
 
     int blockNum = 0;
     int byteIdx = 0;
@@ -97,7 +129,7 @@ void datParser(char* dat, unsigned int size, char* lastBlockMerkleRoot) {
         // block header
         byteIdx += 4;  //version
 
-        char prevBlockHash[32];
+        unsigned char prevBlockHash[32];
         PrintHex(dat,byteIdx,32,prevBlockHash);
         byteIdx+=32;// previous block hash
 
@@ -202,129 +234,92 @@ void datParser(char* dat, unsigned int size, char* lastBlockMerkleRoot) {
 //        printf("\n");
     }
 }
-void AddDataToHashTable(int fileno, char* path, char * merkleroothash, int nodeid) {
-    AddHashData(FileInfotbl, fileno, path, merkleroothash);
-    AddNodeHashData(NodeInfotbl, nodeid, fileno, path);
+void AddDataToHashTable(int fileno, char* path, unsigned char * merkleroothash, unsigned int nodeid) {
+    FileInfotbl[fileno].listcnt++;
+//    printf("[node %d] AddeHasData FileNo= %d / actual_path = %s\n",nodeid, fileno, path);
+    AddHashData(fileno, path, merkleroothash);
+    AddNodeHashData(nodeid, fileno, path,merkleroothash);
 }
 
-//hj add for storage hashtable
-#define MAX_NODE_CNT 2000
-#define MAX_DATAFILE_CNT 2000
-
-void createHashTables() {
-    FileInfotbl = (HashTable*)malloc(sizeof(HashTable));
-    FileInfotbl->ents = (HashTblEntry*)malloc(sizeof(HashTblEntry)*MAX_DATAFILE_CNT);
-    // initialize hash table entries
-    for(int i=0; i<MAX_DATAFILE_CNT; i++) {
-        FileInfotbl->ents[i].listcnt = 0;
-        FileInfotbl->ents[i].list = NULL;
-    }
-
-    NodeInfotbl = (HashNodeTable *)malloc(sizeof(HashNodeTable));
-    NodeInfotbl->ents = (HashNodeTblEntry*)malloc(sizeof(HashNodeTblEntry)*MAX_NODE_CNT);
-    // initialize hash node table entries
-    for(int i=0; i<MAX_NODE_CNT; i++) {
-        NodeInfotbl->ents[i].lastFileNo = 0;
-        NodeInfotbl->ents[i].list = NULL;
-    }
-}
 
 // AddHashData : [key]에 data 추가 -
-void AddHashData(HashTable *hashtable, int fileno, char* actual_path, char* lastBlockHash){
+void AddHashData(int fileno, char* actual_path, unsigned char* lastBlockHash){
 
-    // list entry 생성
-    Hashlist* elem = (Hashlist*)malloc(sizeof(Hashlist));
-    elem->fileno = fileno;
-    elem->actual_path = actual_path;
-    elem->lastBlockHashMerkleRoot = (char*)malloc(sizeof(char)*32);
-    memcpy(elem->lastBlockHashMerkleRoot, lastBlockHash, 32);
-    elem->refCnt=0;
+    FileInfotbl.reserve(FileInfotbl.size()+1);
 
-    // put elem to list header
-    Hashlist* cursor = hashtable->ents[fileno].list;
-    hashtable->ents[fileno].list = elem;
-    elem->next = cursor;
-    elem->prev = NULL;
-    if (cursor)
-        cursor->prev = elem;
+    Hashlist hashlist = { actual_path, 0};
+    std::string blockhash(reinterpret_cast<char const *>(lastBlockHash),32);
+    FileInfotbl[fileno].list[blockhash] = hashlist;
 
-    hashtable->ents[fileno].listcnt++;
 }
 
-void AddNodeHashData(HashNodeTable *hashNodeTable,unsigned int nodeid, int fileno,char* actual_path) {
-    // list entry 생성
-    HashNodelist* elem = (HashNodelist*)malloc(sizeof(HashNodelist));
-    elem->fileno = fileno;
-    elem->actual_path = actual_path;
-    elem->nodeID = nodeid;
+void AddNodeHashData(unsigned int nodeid, int fileno,char* actual_path, unsigned char* lastblockhash) {
 
-    // put elem to list header
-    HashNodelist* cursor = hashNodeTable->ents[nodeid].list;
-    hashNodeTable->ents[nodeid].list = elem;
-    elem->next = cursor;
-    elem->prev = NULL;
-    if (cursor)
-        cursor->prev = elem;
+    HashNodelist hashnodelist = {actual_path, lastblockhash};
+    NodeInfotbl[nodeid].list[fileno] = hashnodelist;
+    NodeInfotbl[nodeid].lastFileNo = fileno;
 
-    hashNodeTable->ents[nodeid].lastFileNo = fileno;
+    std::string blockhash(reinterpret_cast<char const *>(lastblockhash),32);
+    FileInfotbl[fileno].list[blockhash].refCnt++;
+//    printf("[node %d] AddNodeHasData FileNo= %d / actual_path = %s\n",nodeid, fileno, actual_path);
+
 }
 
+//std::string getLastBlockHash(int fileno){
+//    return FileInfotbl[fileno]
+//    char* res = FileInfotbl->ents[key].list->lastBlockHashMerkleRoot;
+//    return res;
+//}
 
-char* getLastBlockHash(HashTable *hashtable, int key){
-    char* res = FileInfotbl->ents[key].list->lastBlockHashMerkleRoot;
-    return res;
-}
-
-void DeleteHashData(HashTable *hashtable, int key, char* actual_path){
-
-    if(hashtable->ents[key].list == NULL) {
-        return;
-    }
-
-    Hashlist* delNode = NULL;
-    if(hashtable->ents[key].list->actual_path == actual_path){
-        delNode = FileInfotbl->ents[key].list;
-        hashtable->ents[key].list = hashtable->ents->list->next;
-    }
-    else {
-        Hashlist *node = hashtable->ents[key].list;
-        Hashlist *next = node->next;
-
-        while (next) {
-            if (strcmp(next->actual_path ,actual_path) == 0) {
-                node->next = next->next;
-                delNode = next;
-                break;
-            }
-            node = next;
-            next = node->next;
-        }
-    }
-    free(delNode->lastBlockHashMerkleRoot);
-    free(delNode);
-}
-
-void DeleteNodeHashData(HashNodeTable *hashNodeTable,int key){
-    if(hashNodeTable->ents[key].list == NULL) {
-        return;
-    }
-    hashNodeTable->ents[key].lastFileNo=0;
-    free(hashNodeTable->ents[key].list);
-}
-
-void printHashTable(HashNodeTable *hashtable,int key){
-    printf("[hash table : %d]\n",key);
-    HashNodelist * node = hashtable->ents[key].list;
-    printf("print hash table : %s \n",node->actual_path);
-    while (node->next) {
-        node = node->next;
-        printf("print hash table : %s \n",node->actual_path);
-    }
-}
+//void DeleteHashData(int key, char* actual_path){
+//
+//    if(hashtable->ents[key].list == NULL) {
+//        return;
+//    }
+//
+//    Hashlist* delNode = NULL;
+//    if(hashtable->ents[key].list->actual_path == actual_path){
+//        delNode = FileInfotbl->ents[key].list;
+//        hashtable->ents[key].list = hashtable->ents->list->next;
+//    }
+//    else {
+//        Hashlist *node = hashtable->ents[key].list;
+//        Hashlist *next = node->next;
+//
+//        while (next) {
+//            if (strcmp(next->actual_path ,actual_path) == 0) {
+//                node->next = next->next;
+//                delNode = next;
+//                break;
+//            }
+//            node = next;
+//            next = node->next;
+//        }
+//    }
+//    free(delNode->lastBlockHashMerkleRoot);
+//    free(delNode);
+//}
+//
+//void DeleteNodeHashData(int key){
+//    if(hashNodeTable->ents[key].list == NULL) {
+//        return;
+//    }
+//    hashNodeTable->ents[key].lastFileNo=0;
+//    free(hashNodeTable->ents[key].list);
+//}
+//
+//void printHashTable(int key){
+//    printf("[hash table : %d]\n",key);
+//    HashNodelist * node = hashtable->ents[key].list;
+//    printf("print hash table : %s \n",node->actual_path);
+//    while (node->next) {
+//        node = node->next;
+//        printf("print hash table : %s \n",node->actual_path);
+//    }
+//}
 
 
-extern "C"
-{
+
 
 char* shadow_bitcoin_get_dat_file_path(char* processName,int fileno) {
     char *path;
@@ -342,14 +337,8 @@ char* shadow_bitcoin_get_tmp_file_path(char* processName){
 
 char* shadow_bitcoin_get_actual_path(int processID,int fileno){
 
-    HashNodelist *node = NodeInfotbl->ents[processID].list;
-    while (node) {
-        if(node->fileno==fileno) {
-            return node->actual_path;
-        }
-        node = node->next;
-    }
-    return NULL;
+    return NodeInfotbl[processID].list[fileno].actual_path;
+
 }
 
 int shadow_bitcoin_copy_dat_files(char* procName, int fileno) {
@@ -379,7 +368,7 @@ int shadow_bitcoin_copy_dat_files(char* procName, int fileno) {
     return 1;
 }
 
-int shadow_bitcoin_compare_dat_files(char* processName, int processID, int fileno) {
+int shadow_bitcoin_compare_dat_files(char* processName, unsigned int processID, int fileno) {
 //    printf("process_emu_compare_dat_file test fileno is %d_%s \n",fileno,proc->processName->str);
 
     //cp_data file open
@@ -390,38 +379,48 @@ int shadow_bitcoin_compare_dat_files(char* processName, int processID, int filen
     unsigned int size2 = ftell(file2);
     fseek(file2,0,SEEK_SET);
 
-    char merkleroothash[32];
-    char buf2[size2];
+//    unsigned char merkleroothash[32];
+    unsigned char* merkleroothash ;
+    merkleroothash=(unsigned char*)malloc(sizeof(char)*32);
+    unsigned char buf2[size2];
     fread(&buf2, sizeof(char), size2, file2);
     datParser(buf2, size2, merkleroothash);
     fclose(file2);
 
-    //if file is not exist, return 0;
-    if(FileInfotbl == NULL) {
-        createHashTables();
-    }
-    if(FileInfotbl->ents[fileno].list == NULL) {
-//        printf("COMPARE Result = file %d  is not exist! make the new file!!\n",fileno);
-
+//    printf("compare_dat files file no : %d  /tmp file path : %s /last block hash: %02x \n ",fileno, path2, *merkleroothash);
+    _bitcoin_storage_share_FileInfotbl_m.lock();
+    std::unordered_map<int, HashTable>::const_iterator  res = FileInfotbl.find(fileno);
+    if(res == FileInfotbl.end()){
         //data를 hash table에 추가
+        printf("COMPARE Result = %s make new file !! %d \n",processName, fileno);
         AddDataToHashTable(fileno,shadow_bitcoin_get_dat_file_path(processName,fileno),merkleroothash,processID);
+        if(!shadow_bitcoin_copy_dat_files(processName,fileno)) {
+            printf("cannot copy %d Dat file!\n",fileno);
+        }
+
+        _bitcoin_storage_share_FileInfotbl_m.unlock();
         return 0;// file is not exist, so make the file!
     }
+    std::string blockhash(reinterpret_cast<char const *>(merkleroothash),32);
+    std::unordered_map<std::string, Hashlist>::const_iterator listnode = res->second.list.find(blockhash);
 
-    Hashlist * node = FileInfotbl->ents[fileno].list;
-    while (node) {
-        char* uniqueid = node->lastBlockHashMerkleRoot;
-        if(memcmp(uniqueid, merkleroothash, 32) == 0) {
-//            printf("COMPARE Result = %s and %s file is same!!!\n",path2,node->actual_path);
-            AddNodeHashData(NodeInfotbl,processID,fileno,node->actual_path);
-            return 1;
-        }
-        node = node->next;
+    if(listnode == res->second.list.end()) { // 해당하는 해시가 없으면 , 즉 새로운 데이터 파일이 들어 왔을 때,
+//        printf("COMPARE Result = %s file is NOT same!!!\n",path2);
+        shadow_bitcoin_copy_dat_files(processName,fileno);
+        AddDataToHashTable(fileno,shadow_bitcoin_get_dat_file_path(processName,fileno),merkleroothash,processID);
+        FileInfotbl[fileno].list[blockhash].refCnt+=1;
+        _bitcoin_storage_share_FileInfotbl_m.unlock();
+        return 0;
     }
-//        printf("COMPARE Result = %s and %s file is NOT same!!!\n",path2,FileInfotbl->ents[fileno].list->actual_path);
-    AddDataToHashTable(fileno,shadow_bitcoin_get_dat_file_path(processName,fileno),merkleroothash,processID);
-    return 0;
+    else {
+//        printf("COMPARE Result = %s and %s file is same!!!\n",path2,FileInfotbl[fileno].list[blockhash].actual_path);
+        AddNodeHashData(processID,fileno,listnode->second.actual_path,merkleroothash);
+        FileInfotbl[fileno].list[blockhash].refCnt+=1;
+        NodeInfotbl[fileno].lastFileNo = fileno;
+        _bitcoin_storage_share_FileInfotbl_m.unlock();
+        return 1;
+    }
 
-}
+}//compare_dat_files
 
-}
+}//extern c
