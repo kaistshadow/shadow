@@ -13,7 +13,6 @@ extern "C"
 std::mutex _bitcoin_storage_share_FileInfotbl_m;
 std::mutex _bitcoin_storage_share_NodeInfotbl_m;
 
-//hyeojin made for storage hash table
 typedef struct _Hashlist{
     char* actual_path;
     unsigned int refCnt;
@@ -26,7 +25,6 @@ typedef struct _HashTable{
 
 std::unordered_map<int, HashTable> FileInfotbl;
 
-//structure for hashNodetable
 typedef struct _HashNodelist {
     char* actual_path;
     unsigned char* lastBlockhash;
@@ -392,14 +390,14 @@ int shadow_bitcoin_compare_dat_files(char* processName, unsigned int processID, 
     std::unordered_map<int, HashTable>::const_iterator  res = FileInfotbl.find(fileno);
     if(res == FileInfotbl.end()){
         //data를 hash table에 추가
-        printf("COMPARE Result = %s make new file !! %d \n",processName, fileno);
+//        printf("COMPARE Result = %s make new file !! %d \n",processName, fileno);
         AddDataToHashTable(fileno,shadow_bitcoin_get_dat_file_path(processName,fileno),merkleroothash,processID);
         if(!shadow_bitcoin_copy_dat_files(processName,fileno)) {
             printf("cannot copy %d Dat file!\n",fileno);
         }
 
         _bitcoin_storage_share_FileInfotbl_m.unlock();
-        return 0;// file is not exist, so make the file!
+        return 1;// file is not exist, so make the file!
     }
     std::string blockhash(reinterpret_cast<char const *>(merkleroothash),32);
     std::unordered_map<std::string, Hashlist>::const_iterator listnode = res->second.list.find(blockhash);
@@ -410,17 +408,15 @@ int shadow_bitcoin_compare_dat_files(char* processName, unsigned int processID, 
         AddDataToHashTable(fileno,shadow_bitcoin_get_dat_file_path(processName,fileno),merkleroothash,processID);
         FileInfotbl[fileno].list[blockhash].refCnt+=1;
         _bitcoin_storage_share_FileInfotbl_m.unlock();
-        return 0;
-    }
-    else {
+        return 1;
+    } else {
 //        printf("COMPARE Result = %s and %s file is same!!!\n",path2,FileInfotbl[fileno].list[blockhash].actual_path);
-        AddNodeHashData(processID,fileno,listnode->second.actual_path,merkleroothash);
-        FileInfotbl[fileno].list[blockhash].refCnt+=1;
+        AddNodeHashData(processID, fileno, listnode->second.actual_path, merkleroothash);
+        FileInfotbl[fileno].list[blockhash].refCnt += 1;
         NodeInfotbl[fileno].lastFileNo = fileno;
         _bitcoin_storage_share_FileInfotbl_m.unlock();
         return 1;
     }
-
 }//compare_dat_files
 
 }//extern c

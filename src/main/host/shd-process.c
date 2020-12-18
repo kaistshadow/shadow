@@ -8093,14 +8093,6 @@ void process_emu_shadow_instrumentation_marker_set(Process* proc, int file_symbo
     return;
 }
 
-char* process_emu_get_dat_file_path(Process* proc,int fileno) {
-    ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
-    char* procName = proc->processName->str;
-    char* res = shadow_bitcoin_get_dat_file_path(procName, fileno);
-    _process_changeContext(proc, PCTX_SHADOW, prevCTX);
-    return res;
-}
-
 char* process_emu_get_tmp_file_path(Process* proc){
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
     char* procName = proc->processName->str;
@@ -8112,14 +8104,6 @@ char* process_emu_get_tmp_file_path(Process* proc){
 char* process_emu_get_actual_path(Process* proc,int fileno){
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
     char* res = shadow_bitcoin_get_actual_path(proc->bleepProcessID,fileno);
-    _process_changeContext(proc, PCTX_SHADOW, prevCTX);
-    return res;
-}
-
-int process_emu_copy_dat_files(Process* proc, int fileno) {
-    ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
-    char* procName = proc->processName->str;
-    int res = shadow_bitcoin_copy_dat_files(procName, fileno);
     _process_changeContext(proc, PCTX_SHADOW, prevCTX);
     return res;
 }
