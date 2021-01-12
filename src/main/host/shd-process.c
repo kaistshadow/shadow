@@ -173,6 +173,7 @@ struct _buffer_threads {
 };
 // for BLEEP arbitrary process ID set
 guint bleepProcessIDBase = 0;
+
 struct _Process {
     /* the parent virtual host that this process is running on */
     Host* host;
@@ -342,7 +343,6 @@ void copy_tls(Process* proc, pth_t * thread, int flag) {
             prev = buf;
             buf = buf->next;
         }
-
     }
     pthread_t buf_thread_aux;
     gint returnVal = pthread_create(&(buf_thread_aux), NULL, sleep_tls, NULL);
@@ -1267,6 +1267,7 @@ static void _process_start(Process* proc) {
 
     _process_changeContext(proc, PCTX_PTH, PCTX_SHADOW);
     //copy_tls (proc, &thread, 0);
+
     utility_assert(proc->plugin.isExecuting);
     if(proc->plugin.postProcessExit != NULL) {
         _process_changeContext(proc, PCTX_SHADOW, PCTX_PLUGIN);
@@ -8055,28 +8056,35 @@ int process_emu_shadow_bind(Process* proc, int fd, const struct sockaddr* addr, 
     }
 
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
-    // setup a new network interface
-    // 1. register & get virtual address identifiers for virtual network interface
+
     struct sockaddr_in* saddr = (struct sockaddr_in*) addr;
     in_addr_t bindAddress = saddr->sin_addr.s_addr;
     gchar* address = address_ipToNewString(bindAddress);
     guint64 bwDownKiBps = 0, bwUpKiBps = 0;
     gchar* shadow_domain = g_strconcat(host_getName(proc->host), address, NULL); // check it is okay for this domain (<hostname>-<shadowip>)
-    Address* shadow_addr = dns_register(worker_getDNS(), host_getID(proc->host), shadow_domain, address);
 
-    // 2. dynamically attach to topology
-    topology_attach(worker_getTopology(), shadow_addr, host_getRandom(proc->host), address, NULL, NULL, NULL, NULL, &bwDownKiBps, &bwUpKiBps);
+    // check whether the virtual network interface exists.
+    Address* shadow_addr = worker_resolveNameToAddress(shadow_domain);
+    if (!shadow_addr) {
+        // setup a new network interface
+        // 1. register & get virtual address identifiers for virtual network interface
+        shadow_addr = dns_register(worker_getDNS(), host_getID(proc->host), shadow_domain, address);
 
-    // 3. register network interface
-    NetworkInterface* networkInterface = networkinterface_new(shadow_addr, bwDownKiBps, bwUpKiBps,
-                                                              FALSE, NULL, QDISC_MODE_FIFO, 1024000);
-    networkinterface_setShadow(networkInterface, TRUE);
-    host_setupInterface(proc->host, shadow_addr, networkInterface);
+        // 2. dynamically attach to topology
+        topology_attach(worker_getTopology(), shadow_addr, host_getRandom(proc->host), address, NULL, NULL, NULL, NULL, &bwDownKiBps, &bwUpKiBps);
 
-    message("[For shadow_bind] Setup additional network interface for host id '%u' name '%s' with ip %s, "
-            "%"G_GUINT64_FORMAT" bwUpKiBps, %"G_GUINT64_FORMAT" bwDownKiBps",
-            (guint)host_getID(proc->host), host_getName(proc->host), address,
-            bwUpKiBps, bwDownKiBps);
+        // 3. register network interface
+        NetworkInterface* networkInterface = networkinterface_new(shadow_addr, bwDownKiBps, bwUpKiBps,
+                                                                  FALSE, NULL, QDISC_MODE_FIFO, 1024000);
+        networkinterface_setShadow(networkInterface, TRUE);
+        host_setupInterface(proc->host, shadow_addr, networkInterface);
+
+        
+        message("[For shadow_bind] Setup additional network interface for host id '%u' name '%s' with ip %s, "
+                "%"G_GUINT64_FORMAT" bwUpKiBps, %"G_GUINT64_FORMAT" bwDownKiBps",
+                (guint)host_getID(proc->host), host_getName(proc->host), address,
+                bwUpKiBps, bwDownKiBps);
+    }
 
     _process_changeContext(proc, PCTX_SHADOW, prevCTX);
 
