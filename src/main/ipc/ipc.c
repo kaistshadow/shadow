@@ -26,12 +26,6 @@ gboolean check_ipc_server() {
                 server_exist = TRUE;
         }
     }
-    // TODO : zmq_ctx_destroy is not working. It results in deadlock.
-//    if (!server_exist) {
-//        zmq_close(zmq_req_socket);
-//        zmq_ctx_destroy(shadow_ipc_conf.zmq_context);
-//    }
-
     return server_exist;
 }
 
@@ -62,18 +56,6 @@ void sendIPC_tcp_connect(int fd, const struct sockaddr* addr, socklen_t len) {
         // not an IPv4 address
         return;
     }
-    Descriptor *desc = host_lookupDescriptor(worker_getActiveHost(), fd);
-
-    in_addr_t from_addr = 0;
-    if (!socket_getSocketName((Socket*)desc, &from_addr, NULL)) {
-        // if socket is not bound, retreive default host IP address
-        Host* activeHost = worker_getActiveHost();
-        if (activeHost) {
-            Address* hostAddress = host_getDefaultAddress(activeHost);
-            if (hostAddress)
-                from_addr = address_toNetworkIP(hostAddress);
-        }
-    }
 
     // get interested values for 'connect'
     struct sockaddr_in* inaddr = (struct sockaddr_in*)addr;
@@ -81,6 +63,14 @@ void sendIPC_tcp_connect(int fd, const struct sockaddr* addr, socklen_t len) {
     uint32_t in_addr = (uint32_t)(inaddr->sin_addr.s_addr);
     const char *TOPIC = "shadow_tcp_control";
     const size_t topic_size = strlen(TOPIC);
+    uint32_t from_addr;
+    Host* activeHost = worker_getActiveHost();
+    if(activeHost) {
+        Address* hostAddress = host_getDefaultAddress(activeHost);
+        if(hostAddress) {
+            from_addr = address_toNetworkIP(hostAddress);
+        }
+    }
 
     // get current virtual time
     uint64_t curTime = worker_getCurrentTime();
