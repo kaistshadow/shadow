@@ -536,16 +536,6 @@ void shadow_instrumentation_marker_set(int file_symbol, int line_cnt) {
     }
 }
 
-char* get_dat_file_path(int fileno) {
-    Process* proc = NULL;
-    if((proc = _doEmulate()) != NULL) {
-        return process_emu_get_dat_file_path(proc,fileno);
-    } else {
-        ENSURE(get_dat_file_path);
-        return director.next.get_dat_file_path(fileno);
-    }
-}
-
 char* get_tmp_file_path() {
     Process* proc = NULL;
     if((proc = _doEmulate()) != NULL) {
@@ -563,16 +553,6 @@ char* get_actual_path(int fileno) {
     } else {
         ENSURE(get_actual_path);
         return director.next.get_actual_path(fileno);
-    }
-}
-
-int copy_dat_files(int fileno) {
-    Process* proc = NULL;
-    if((proc = _doEmulate()) != NULL) {
-        return process_emu_copy_dat_files(proc,fileno);
-    } else {
-        ENSURE(copy_dat_files);
-        return director.next.copy_dat_files(fileno);
     }
 }
 
