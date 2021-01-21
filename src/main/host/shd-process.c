@@ -8162,12 +8162,12 @@ int process_emu_compare_dat_files(Process* proc, int fileno) {
 // BLEEP ADDON
 void process_emu_shadow_bitcoin_register_hash(Process* proc, const char hash[]) {
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
-    shadow_bitcoin_register_hash(hash);
+    bleep_addon_bitcoin_register_hash(hash);
     _process_changeContext(proc, PCTX_SHADOW, prevCTX);
 }
 int process_emu_shadow_bitcoin_check_hash(Process* proc, const char hash[]) {
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
-    int ret = shadow_bitcoin_check_hash(hash);
+    int ret = bleep_addon_bitcoin_check_hash(hash);
     _process_changeContext(proc, PCTX_SHADOW, prevCTX);
     return ret;
 }

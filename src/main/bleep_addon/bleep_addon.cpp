@@ -1,25 +1,20 @@
 #include "bleep_addon.h"
 
-#include <unordered_set>
-#include <mutex>
+// bleep_addon.h and cpp is for interfaces between Shadow and bleep-addon module.
+// So, do not write functionality logic for each tasks in this code,
+// just make submodule directories and separate them to other submodules.
 
-/* bitcoin coinflip validation */
-std::unordered_set<std::string> _bitcoin_coinflip_validation_table;
-std::mutex _bitcoin_coinflip_validation_table_m;
+#include "bitcoin_mine_support/coinflip_validation.h"
 
 extern "C"
 {
 
-void shadow_bitcoin_register_hash(const char hash[]) {
-    _bitcoin_coinflip_validation_table_m.lock();
-    _bitcoin_coinflip_validation_table.insert(hash);
-    _bitcoin_coinflip_validation_table_m.unlock();
-    return;
+void bleep_addon_bitcoin_register_hash(const char hash[]) {
+    return bitcoin_mine_support().register_hash(hash);
 }
-int shadow_bitcoin_check_hash(const char hash[]) {
-    std::unordered_set<std::string>::const_iterator got = _bitcoin_coinflip_validation_table.find(hash);
-    int res = (got != _bitcoin_coinflip_validation_table.end());
-    return res;
+int bleep_addon_bitcoin_check_hash(const char hash[]) {
+    return bitcoin_mine_support().check_hash(hash);
 }
+
 
 }
