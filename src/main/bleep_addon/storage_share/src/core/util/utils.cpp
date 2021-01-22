@@ -4,6 +4,9 @@
 
 #include "utils.h"
 
+#include "../datatypes/datatype.h"
+
+#include <string>
 #include <unistd.h>
 #include <cstdio>
 
@@ -59,15 +62,11 @@ int parse_filemode(const char* mode) {
     return flag;
 }
 
-#include <string>
 int random_name_base = 0;
-std::string random_name() {
-	char random_text[30];
-	sprintf(random_text, "r%d.txt", random_name_base++);
-	return std::string(random_text);
-}
-
-std::string generate_filename(size_t* startoffset) {
+std::string generate_filename(datatype* dtype, size_t* startoffset) {
+    char random_text[30];
+    sprintf(random_text, "%d-%d.txt", dtype->get_typeid(), random_name_base++);
     *startoffset = 0;
-    return random_name();
+
+    return std::string(random_text);
 }

@@ -77,7 +77,7 @@ public:
     // find corresponding fileane and fileoffset. if not exists, register such offset in file with m->get_size()
     // delete m
     sharing_unit(memory_unit* m);
-    ~sharing_unit() override {};
+    ~sharing_unit() override = default;;
     size_t read(void* dest, size_t count, size_t local_offset) override;
     // cannot write shared file
     size_t write(const void* ptr, size_t count, size_t local_offset) override {return 0;}

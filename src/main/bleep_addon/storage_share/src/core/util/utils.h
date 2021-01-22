@@ -7,6 +7,8 @@
 
 #include <string>
 
+class datatype;
+
 void init_fd_assignment_system(int bleepProcessId);
 int try_assign_unused_fd();
 int free_fd(int fd);
@@ -21,8 +23,6 @@ int free_fd(int fd);
 #define _FILEMODE_BINARY    0x100000
 int parse_filemode(const char* mode);
 
-std::string random_name();
-
-std::string generate_filename(size_t* startoffset);
+std::string generate_filename(datatype* dtype, size_t* startoffset);
 
 #endif //STORAGE_SHARING_MODULE_UTILS_H

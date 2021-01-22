@@ -114,7 +114,7 @@ sharing_unit::sharing_unit(memory_unit* m) : data_segment(m->get_size(), m->get_
     flags = m->get_flags() | _DATASEGMENT_SHARED;
     this->hash_value = m->hash();
     // shared_unit specific field
-    filename = generate_filename(&fileoffset); // decide filename and fileoffset
+    filename = generate_filename(dtype->get_typeid(), &fileoffset); // decide filename and fileoffset
     reference_count = 0;
 
     FILE* f = fopen(filename.c_str(), "r+b");
