@@ -10,12 +10,14 @@
 #include "storage_share/src/core/util/utils.h"
 #include "storage_share/src/core/file_control.h"
 
+#include <mutex>
 #include <vector>
 
 /* storage-sharing */
 // one file control per node
 std::vector<file_control*> global_file_controls;
 int global_file_controls_size = 0;
+std::mutex gfc_lock;
 file_control* get_file_control(unsigned int bleep_process_id) {
     if (bleep_process_id >= global_file_controls_size) {
         global_file_controls.resize(bleep_process_id + 1, nullptr);
@@ -23,8 +25,20 @@ file_control* get_file_control(unsigned int bleep_process_id) {
     }
     file_control* fc = global_file_controls[bleep_process_id];
     if (fc == nullptr) {
-        fc = new file_control();
-        global_file_controls[bleep_process_id] = fc;
+        file_control* fc0 = new file_control();
+        // lock
+        gfc_lock.lock();
+        if (global_file_controls[bleep_process_id]) {
+            // unlock
+            gfc_lock.unlock();
+            delete fc0;
+            fc = global_file_controls[bleep_process_id];
+        } else {
+            global_file_controls[bleep_process_id] = fc0;
+            // unlock
+            gfc_lock.unlock();
+            fc = fc0;
+        }
     }
     return fc;
 }
