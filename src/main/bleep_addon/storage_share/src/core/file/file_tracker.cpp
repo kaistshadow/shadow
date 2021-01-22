@@ -11,6 +11,8 @@ file* file_tracker::replace(const char *filename, file *f) {
     std::string filenameStr(filename);
 
     file* peek = nullptr;
+    // lock
+    tracker_mutex.lock();
     auto it = tracker.find(filenameStr);
     if( it != tracker.end() ) {
         peek = it->second;
@@ -22,15 +24,21 @@ file* file_tracker::replace(const char *filename, file *f) {
         if(f)
             tracker.insert({filenameStr, f});
     }
+    // unlock
+    tracker_mutex.unlock();
     return peek;
 }
 file* file_tracker::lookup(const char *filename) {
     std::string filenameStr(filename);
 
     file* peek = nullptr;
+    // lock
+    tracker_mutex.lock();
     auto it = tracker.find(filenameStr);
     if( it != tracker.end() ) {
         peek = it->second;
     }
+    // unlock
+    tracker_mutex.unlock();
     return peek;
 }

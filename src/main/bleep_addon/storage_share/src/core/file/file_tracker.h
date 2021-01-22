@@ -7,11 +7,13 @@
 
 #include "file.h"
 
+#include <mutex>
 #include <unordered_map>
 #include <string>
 
 class file_tracker {
     std::unordered_map<std::string, file*> tracker;
+    std::mutex tracker_mutex;
 public:
 
     // try to replace/insert the entry for filename to f.
