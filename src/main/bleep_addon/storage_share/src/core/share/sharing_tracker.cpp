@@ -5,6 +5,8 @@
 #include "sharing_tracker.h"
 
 #include <vector>
+#include <cstring>
+#include <cstdlib>
 
 bool key::operator==(const key &other) const {
     size_t our_size = segment->get_size();
@@ -33,6 +35,28 @@ bool key::operator==(const key &other) const {
         free(other_data);
     }
     return res == 0;
+}
+
+std::unordered_map<key, sharing_unit*, hashfn>::iterator sharing_tracker::find(data_segment* s) {
+    key k(s);
+    return tracker.find(k);
+}
+std::unordered_map<key, sharing_unit*, hashfn>::iterator sharing_tracker::end() {
+    return tracker.end();
+}
+void sharing_tracker::insert(sharing_unit* s) {
+    key k(s);
+    tracker.insert({k, s});
+}
+void sharing_tracker::remove(sharing_unit* s) {
+    key k(s);
+    tracker.erase(k);
+}
+void sharing_tracker::lock() {
+    sharing_tracker_mutex.lock();
+}
+void sharing_tracker::unlock() {
+    sharing_tracker_mutex.unlock();
 }
 
 sharing_tracker** tracker_list = nullptr;

@@ -32,10 +32,17 @@ memory_unit::memory_unit(sharing_unit* u) : data_segment(u->get_size(), u->get_t
     data = (unsigned char*)malloc(sizeof(unsigned char) * u->get_size());
     u->read(data, u->get_size(), 0);
     // delete u
+    sharing_tracker* tracker = get_sharing_tracker(u->get_typeptr()->get_typeid());
+    // lock tracker
+    tracker->lock();
     if (u->unreference() == 0) {
-        sharing_tracker* st = get_sharing_tracker(u->get_typeptr()->get_typeid());
-        st->remove(u);
+        tracker->remove(u);
+        // unlock tracker
+        tracker->unlock();
         delete u;
+    } else {
+        // unlock tracker
+        tracker->unlock();
     }
 }
 size_t memory_unit::read(void* dest, size_t count, size_t local_offset) {
@@ -81,17 +88,22 @@ std::size_t memory_unit::hash() {
 }
 sharing_unit* make_shared(memory_unit* m) {
     sharing_tracker* tracker = get_sharing_tracker(m->get_typeptr()->get_typeid());
-    auto it = tracker->find(m);
     sharing_unit* res;
+    sharing_unit* res0 = new sharing_unit(m);
+    // lock tracker
+    tracker->lock();
+    auto it = tracker->find(m);
     if (it == tracker->end()) {
-        // create new sharing unit
-        res = new sharing_unit(m);
-        // register res;
-        tracker->insert(res);
-        res->reference();
+        tracker->insert(res0);
+        res = res0;
     } else {
         res = it->second;
-        res->reference();
+    }
+    res->reference();
+    // unlock tracker
+    tracker->unlock();
+    if (res != res0) {
+        delete res0;
     }
     delete m;
     return res;

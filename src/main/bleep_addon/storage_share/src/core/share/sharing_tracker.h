@@ -8,10 +8,8 @@
 #include "../data_unit/data_segment.h"
 #include "../datatypes/datatype.h"
 
+#include <mutex>
 #include <unordered_map>
-#include <cstring>
-#include <cstdlib>
-#include <cstdio>
 
 class key {
 public:
@@ -30,22 +28,14 @@ public:
 
 class sharing_tracker {
     std::unordered_map<key, sharing_unit*, hashfn> tracker;
+    std::mutex sharing_tracker_mutex;
     public:
-    std::unordered_map<key, sharing_unit*, hashfn>::iterator find(data_segment* s) {
-        key k(s);
-        return tracker.find(k);
-    }
-    std::unordered_map<key, sharing_unit*, hashfn>::iterator end() {
-        return tracker.end();
-    }
-    void insert(sharing_unit* s) {
-        key k(s);
-        tracker.insert({k, s});
-    }
-    void remove(sharing_unit* s) {
-        key k(s);
-        tracker.erase(k);
-    }
+    std::unordered_map<key, sharing_unit*, hashfn>::iterator find(data_segment* s);
+    std::unordered_map<key, sharing_unit*, hashfn>::iterator end();
+    void insert(sharing_unit* s);
+    void remove(sharing_unit* s);
+    void lock();
+    void unlock();
 };
 
 void init_sharing_tracker_list();
