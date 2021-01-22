@@ -89,22 +89,18 @@ std::size_t memory_unit::hash() {
 sharing_unit* make_shared(memory_unit* m) {
     sharing_tracker* tracker = get_sharing_tracker(m->get_typeptr()->get_typeid());
     sharing_unit* res;
-    sharing_unit* res0 = new sharing_unit(m);
     // lock tracker
     tracker->lock();
     auto it = tracker->find(m);
     if (it == tracker->end()) {
-        tracker->insert(res0);
-        res = res0;
+        res = new sharing_unit(m);
+        tracker->insert(res);
     } else {
         res = it->second;
     }
     res->reference();
     // unlock tracker
     tracker->unlock();
-    if (res != res0) {
-        delete res0;
-    }
     delete m;
     return res;
 }
