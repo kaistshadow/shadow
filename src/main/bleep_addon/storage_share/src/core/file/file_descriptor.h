@@ -21,7 +21,6 @@ class file_descriptor {
     size_t local_offset;
 public:
     file_descriptor(file* f, int fd, int flags);
-    ~file_descriptor();
     file* get_file() {return f;}
     FILE* get_file_info() { return &file_info;}
 	int check_eof();

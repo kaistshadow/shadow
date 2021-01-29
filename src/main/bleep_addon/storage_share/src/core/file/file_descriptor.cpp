@@ -11,7 +11,6 @@
 // increase reference count of file
 file_descriptor::file_descriptor(file* f, int fd, int flags) {
     this->f = f;
-    f->increase_refcnt();
     file_info._fileno = fd;
     this->flags = flags;
 
@@ -21,9 +20,6 @@ file_descriptor::file_descriptor(file* f, int fd, int flags) {
     } else {
         random_access(0);
     }
-}
-file_descriptor::~file_descriptor() {
-    f->decrease_refcnt();
 }
 int file_descriptor::check_eof() {
 	return file_info._offset == f->get_size();

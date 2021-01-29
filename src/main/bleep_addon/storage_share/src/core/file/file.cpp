@@ -22,7 +22,6 @@ void file::_debug_print() {
 file::file(const char* filename, datatype* dtype) {
     this->filename = std::string(filename);
     size = 0;
-    refcnt = 0;
     this->dtype = dtype;
 }
 
@@ -38,15 +37,17 @@ std::map<long int, data_segment*>::iterator file::get_end() {
 }
 
 void file::cleanse() {
-    // iterate:
-    //     if it is fReadOnly, decrease refcnt.
-    //     check refcnt==0
-    //         if so, remove.
-    //     else, remove
-    for (auto it = segments.begin(); it != segments.end();) {
-        delete it->second;
-        it++;
+    auto current_it = segments.begin();
+    while (current_it != segments.end()) {
+        auto next_it = std::next(current_it, 1);
+        data_segment* ds = current_it->second;
+        segments.erase(current_it);
+        if (!(ds->get_flags() & _DATASEGMENT_SHARED) || ((sharing_unit*)ds)->unreference() == 0) {
+            delete ds;
+        }
+        current_it = next_it;
     }
+    size = 0;
 }
 
 std::map<long int, data_segment*>::iterator file::create_new_segment(size_t initial_size) {
@@ -80,11 +81,19 @@ void file::fix_covered_segment(std::map<long int, data_segment*>::iterator it, s
             it->second->write(buffer, current->second->get_size() - bytesLeft, it->second->get_size());
             free(buffer);
             // drop it
-            delete segments.erase(current)->second;
+            data_segment* ds = current->second;
+            segments.erase(current);
+            if (!(ds->get_flags() & _DATASEGMENT_SHARED) || ((sharing_unit*)ds)->unreference() == 0) {
+                delete ds;
+            }
             break;
         } else {
             // drop fully covered segment
-            delete segments.erase(current)->second;
+            data_segment* ds = current->second;
+            segments.erase(current);
+            if (!(ds->get_flags() & _DATASEGMENT_SHARED) || ((sharing_unit*)ds)->unreference() == 0) {
+                delete ds;
+            }
         }
         current = next;
     }

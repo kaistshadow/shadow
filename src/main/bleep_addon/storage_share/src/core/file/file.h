@@ -15,7 +15,6 @@
 class file{
     std::string filename;
     size_t size;
-    int refcnt;
 
     std::map<long int, data_segment*> segments;
 
@@ -26,10 +25,6 @@ class file{
 public:
     file(const char* filename, datatype* dtype);
     long int get_size() const { return size; }
-
-    // virtual file reference count is used for success check of file deletion
-    int increase_refcnt() { return ++refcnt; }
-    int decrease_refcnt() { return --refcnt; }
 
     std::map<long int, data_segment*>::iterator get_segment(long int offset);
     std::map<long int, data_segment*>::iterator get_end();
