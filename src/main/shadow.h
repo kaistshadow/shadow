@@ -36,6 +36,11 @@
 // TODO put into a shd-types.h file
 typedef struct _Process Process;
 
+// To turn on and off the tls-fix commit.
+#ifndef _TURN_OFF_TLS_FIX
+#define _TURN_OFF_TLS_FIX
+gboolean turn_off_tls_fix;
+#endif
 /**
  * @mainpage Shadow Documentation
  *

@@ -770,6 +770,7 @@ gint main_runShadow(gint argc, gchar* argv[]) {
         return EXIT_FAILURE;
     }
 
+    turn_off_tls_fix = options_getTlsFixTurnOnOffStatus(options);
     /* if they just want the shadow version, print it and exit */
     if(options_doRunPrintVersion(options)) {
         g_printerr("%s running GLib v%u.%u.%u and IGraph v%s\n%s\n",
