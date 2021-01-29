@@ -10,28 +10,23 @@
 
 #include <mutex>
 #include <unordered_map>
+#include <unordered_set>
 
-class key {
-public:
-    data_segment* segment;
-    key(data_segment* segment) {
-        this->segment = segment;
-    }
-    virtual bool operator==(const key &other) const;
-};
 class hashfn {
 public:
-    std::size_t operator()(const key& k) const {
-        return k.segment->hash();
-    }
+    std::size_t operator()(data_segment* obj) const;
+};
+class equalfn {
+public:
+    bool operator()(data_segment* lhs, data_segment* rhs) const;
 };
 
 class sharing_tracker {
-    std::unordered_map<key, sharing_unit*, hashfn> tracker;
+    std::unordered_set<data_segment*, hashfn, equalfn> tracker;
     std::mutex sharing_tracker_mutex;
-    public:
-    std::unordered_map<key, sharing_unit*, hashfn>::iterator find(data_segment* s);
-    std::unordered_map<key, sharing_unit*, hashfn>::iterator end();
+public:
+    std::unordered_set<data_segment*, hashfn, equalfn>::iterator find(data_segment* s);
+    std::unordered_set<data_segment*, hashfn, equalfn>::iterator end();
     void insert(sharing_unit* s);
     void remove(sharing_unit* s);
     void lock();

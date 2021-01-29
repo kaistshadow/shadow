@@ -96,7 +96,7 @@ sharing_unit* make_shared(memory_unit* m) {
         res = new sharing_unit(m);
         tracker->insert(res);
     } else {
-        res = it->second;
+        res = (sharing_unit *) (*it);
     }
     res->reference();
     // unlock tracker
