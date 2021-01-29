@@ -2204,8 +2204,9 @@ int process_emu_epoll_wait(Process* proc, int epfd, struct epoll_event *events, 
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
     int ret = 0;
     if(prevCTX == PCTX_PLUGIN) {
-        pth_t thread = pth_self();
+        pth_t thread;
         if (turn_off_tls_fix == 0) {
+            thread = pth_self();
             copy_tls(proc, &thread, 1);
         }
         _process_changeContext(proc, PCTX_SHADOW, PCTX_PTH);
@@ -2229,8 +2230,9 @@ int process_emu_epoll_pwait(Process* proc, int epfd, struct epoll_event *events,
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
     int ret = 0;
     if(prevCTX == PCTX_PLUGIN) {
-        pth_t thread = pth_self();
+        pth_t thread;
         if (turn_off_tls_fix == 0) {
+            thread = pth_self();
             copy_tls(proc, &thread, 1);
         }
         _process_changeContext(proc, PCTX_SHADOW, PCTX_PTH);
@@ -3357,8 +3359,9 @@ unsigned int process_emu_sleep(Process* proc, unsigned int sec) {
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
     unsigned int ret = 0;
     if(prevCTX == PCTX_PLUGIN) {
-        pth_t thread = pth_self();
+        pth_t thread;
         if (turn_off_tls_fix == 0) {
+            thread = pth_self();
             copy_tls(proc, &thread, 1);
         }
         _process_changeContext(proc, PCTX_SHADOW, PCTX_PTH);
@@ -3384,8 +3387,9 @@ int process_emu_usleep(Process* proc, unsigned int sec) {
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
     int ret = 0;
     if(prevCTX == PCTX_PLUGIN) {
-        pth_t thread = pth_self();
+        pth_t thread;
         if (turn_off_tls_fix == 0) {
+            thread = pth_self();
             copy_tls(proc, &thread, 1);
         }
         _process_changeContext(proc, PCTX_SHADOW, PCTX_PTH);
@@ -3411,8 +3415,9 @@ int process_emu_nanosleep(Process* proc, const struct timespec *rqtp, struct tim
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
     int ret = 0;
     if(prevCTX == PCTX_PLUGIN) {
-        pth_t thread = pth_self();
+        pth_t thread;
         if (turn_off_tls_fix == 0) {
+            thread = pth_self();
             copy_tls(proc, &thread, 1);
         }
         _process_changeContext(proc, PCTX_SHADOW, PCTX_PTH);
@@ -3441,8 +3446,9 @@ int process_emu_select(Process* proc, int nfds, fd_set *readfds, fd_set *writefd
     if(prevCTX == PCTX_PLUGIN) {
         _process_changeContext(proc, PCTX_SHADOW, PCTX_PTH);
         utility_assert(proc->tstate == pth_gctx_get());
-        pth_t thread = pth_self();
+        pth_t thread;
         if (turn_off_tls_fix == 0) {
+            thread = pth_self();
             copy_tls(proc, &thread, 1);
         }
         ret = pth_select(nfds, readfds, writefds, exceptfds, timeout);
@@ -3468,8 +3474,9 @@ int process_emu_pselect(Process* proc, int nfds, fd_set *readfds, fd_set *writef
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
     int ret = 0;
     if(prevCTX == PCTX_PLUGIN) {
-        pth_t thread = pth_self();
+        pth_t thread;
         if (turn_off_tls_fix == 0) {
+            thread = pth_self();
             copy_tls(proc, &thread, 1);
         }
         _process_changeContext(proc, PCTX_SHADOW, PCTX_PTH);
@@ -3493,8 +3500,9 @@ int process_emu_poll(Process* proc, struct pollfd *pfd, nfds_t nfd, int timeout)
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
     int ret = 0;
     if(prevCTX == PCTX_PLUGIN) {
-        pth_t thread = pth_self();
+        pth_t thread;
         if (turn_off_tls_fix == 0) {
+            thread = pth_self();
             copy_tls(proc, &thread, 1);
         }
         _process_changeContext(proc, PCTX_SHADOW, PCTX_PTH);
@@ -3521,8 +3529,9 @@ int process_emu_ppoll(Process* proc, struct pollfd *fds, nfds_t nfds, const stru
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
     int ret = 0;
     if(prevCTX == PCTX_PLUGIN) {
-        pth_t thread = pth_self();
+        pth_t thread;
         if (turn_off_tls_fix == 0) {
+            thread = pth_self();
             copy_tls(proc, &thread, 1);
         }
         _process_changeContext(proc, PCTX_SHADOW, PCTX_PTH);
@@ -6441,8 +6450,9 @@ int process_emu_pthread_yield(Process* proc) {
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
     int ret = 0;
     if(prevCTX == PCTX_PLUGIN) {
-        pth_t thread = pth_self();
+        pth_t thread;
         if (turn_off_tls_fix == 0) {
+            thread = pth_self();
             copy_tls(proc, &thread, 1);
         }
         _process_changeContext(proc, PCTX_SHADOW, PCTX_PTH);
@@ -6487,8 +6497,9 @@ int process_emu_pthread_join(Process* proc, pthread_t thread, void **value_ptr) 
             _process_setErrno(proc, EINVAL);
             _process_changeContext(proc, PCTX_SHADOW, PCTX_PTH);
         } else {
-            pth_t _thread = pth_self();
+            pth_t _thread;
             if (turn_off_tls_fix == 0) {
+                _thread = pth_self();
                 copy_tls(proc, &_thread, 1);
             }
             _process_changeContext(proc, PCTX_SHADOW, PCTX_PTH);
@@ -7275,8 +7286,9 @@ int process_emu_pthread_mutex_lock(Process* proc, pthread_mutex_t *mutex) {
             if(init_result != 0) {
                 ret = errno;
             } else {
-                pth_t thread = pth_self();
+                pth_t thread;
                 if (turn_off_tls_fix == 0) {
+                    thread = pth_self();
                     copy_tls(proc, &thread, 1);
                 }
                 _process_changeContext(proc, PCTX_SHADOW, PCTX_PTH);
@@ -7326,8 +7338,9 @@ int process_emu_pthread_mutex_trylock(Process* proc, pthread_mutex_t *mutex) {
             if(init_result != 0) {
                 ret = errno;
             } else {
-                pth_t thread = pth_self();
+                pth_t thread;
                 if (turn_off_tls_fix == 0) {
+                    thread = pth_self();
                     copy_tls(proc, &thread, 1);
                 }
                 _process_changeContext(proc, PCTX_SHADOW, PCTX_PTH);
@@ -7896,8 +7909,9 @@ int process_emu_pthread_cond_broadcast(Process* proc, pthread_cond_t *cond) {
                 ret = errno;
             } else {
                 /*comment*/
-                pth_t thread = pth_self();
+                pth_t thread;
                 if (turn_off_tls_fix == 0) {
+                    thread = pth_self();
                     copy_tls(proc, &thread, 1);
                 }
                 _process_changeContext(proc, PCTX_SHADOW, PCTX_PTH);
@@ -7946,8 +7960,9 @@ int process_emu_pthread_cond_signal(Process* proc, pthread_cond_t *cond) {
             if(init_result != 0) {
                 ret = errno;
             } else {
-                pth_t thread = pth_self();
+                pth_t thread;
                 if (turn_off_tls_fix == 0) {
+                    thread = pth_self();
                     copy_tls(proc, &thread, 1);
                 }
                 _process_changeContext(proc, PCTX_SHADOW, PCTX_PTH);
@@ -8009,8 +8024,9 @@ int process_emu_pthread_cond_wait(Process* proc, pthread_cond_t *cond, pthread_m
                     ret = errno;
                 } else {
                     /*comment*/
-                    pth_t thread = pth_self();
+                    pth_t thread;
                     if (turn_off_tls_fix == 0) {
+                        thread = pth_self();
                         copy_tls(proc, &thread, 1);
                     }
                     _process_changeContext(proc, PCTX_SHADOW, PCTX_PTH);
@@ -8074,8 +8090,9 @@ int process_emu_pthread_cond_timedwait(Process* proc, pthread_cond_t *cond, pthr
                 if(init_result != 0) {
                     ret = errno;
                 } else {
-                    pth_t thread = pth_self();
+                    pth_t thread;
                     if (turn_off_tls_fix == 0) {
+                        thread = pth_self();
                         copy_tls(proc, &thread, 1);
                     }
                     _process_changeContext(proc, PCTX_SHADOW, PCTX_PTH);
