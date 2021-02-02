@@ -1156,7 +1156,7 @@ gboolean process_addAtExitCallback(Process* proc, gpointer userCallback, gpointe
         exitCallback->argument = userArgument;
         exitCallback->passArgument = shouldPassArgument;
 
-        if(!proc->atExitFunctions) {
+        if (!proc->atExitFunctions) {
             proc->atExitFunctions = g_queue_new();
         }
 
@@ -1166,11 +1166,15 @@ gboolean process_addAtExitCallback(Process* proc, gpointer userCallback, gpointe
     return TRUE;
 }
 
-static void _process_start(Process* proc) {
+guint process_getProcessID(Process *proc) {
+    return proc->processID;
+}
+
+static void _process_start(Process *proc) {
     MAGIC_ASSERT(proc);
 
     /* dont do anything if we are already running */
-    if(process_isRunning(proc)) {
+    if (process_isRunning(proc)) {
         return;
     }
 
@@ -1466,6 +1470,7 @@ static void _process_runStartTask(Process* proc, gpointer nothing) {
 }
 
 static void _process_runStopTask(Process* proc, gpointer nothing) {
+    host_freeProcessDescriptors(proc->host, proc);
     process_stop(proc);
 }
 

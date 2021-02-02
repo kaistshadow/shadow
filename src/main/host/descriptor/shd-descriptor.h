@@ -52,6 +52,7 @@ struct _Descriptor {
     GHashTable* epollListeners;
     gint referenceCount;
     gint flags;
+    guint processID;
     MAGIC_DECLARE;
 };
 

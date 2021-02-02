@@ -406,7 +406,7 @@ void host_freeAllApplications(Host* host) {
     MAGIC_ASSERT(host);
     debug("start freeing applications for host '%s'", host->params.hostname);
     while(!g_queue_is_empty(host->processes)) {
-        Process* proc = g_queue_pop_head(host->processes);
+        Process *proc = g_queue_pop_head(host->processes);
         process_stop(proc);
         process_unref(proc);
     }
@@ -416,27 +416,45 @@ void host_freeAllApplications(Host* host) {
     GHashTableIter iter;
     gpointer key, value;
     g_hash_table_iter_init(&iter, host->descriptors);
-    while(g_hash_table_iter_next(&iter, &key, &value)) {
-        Descriptor* descriptor = value;
-        if(descriptor->type == DT_EPOLL) {
-            epoll_clearWatchListeners((Epoll*) descriptor);
+    while (g_hash_table_iter_next(&iter, &key, &value)) {
+        Descriptor *descriptor = value;
+        if (descriptor->type == DT_EPOLL) {
+            epoll_clearWatchListeners((Epoll *) descriptor);
         }
     }
     debug("done clearing epoll descriptors for host '%s'", host->params.hostname);
 }
 
+void host_freeProcessDescriptors(Host *host, Process *proc) {
+    GHashTableIter iter;
+    gpointer key, value;
+    g_hash_table_iter_init(&iter, host->descriptors);
+    while (g_hash_table_iter_next(&iter, &key, &value)) {
+        Descriptor *descriptor = value;
+
+        if (descriptor->processID != process_getProcessID(proc))
+            continue;
+
+        if (descriptor->type == DT_EPOLL) {
+            epoll_clearWatchListeners((Epoll *) descriptor);
+        } else if (descriptor->type == DT_SOCK) {
+            descriptor_close(descriptor);
+        }
+    }
+}
+
 gint host_compare(gconstpointer a, gconstpointer b, gpointer user_data) {
-    const Host* na = a;
-    const Host* nb = b;
+    const Host *na = a;
+    const Host *nb = b;
     MAGIC_ASSERT(na);
     MAGIC_ASSERT(nb);
     return na->params.id > nb->params.id ? +1 : na->params.id < nb->params.id ? -1 : 0;
 }
 
-gboolean host_isEqual(Host* a, Host* b) {
-    if(a == NULL && b == NULL) {
+gboolean host_isEqual(Host *a, Host *b) {
+    if (a == NULL && b == NULL) {
         return TRUE;
-    } else if(a == NULL || b == NULL) {
+    } else if (a == NULL || b == NULL) {
         return FALSE;
     } else {
         return host_compare(a, b, NULL) == 0;
