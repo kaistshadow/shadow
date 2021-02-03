@@ -47,6 +47,8 @@ struct _Options {
 
     GString* inputXMLFilename;
     gboolean turn_off_tls_fix;
+    // BLEEP ddes
+    gchar* ddes_mode;
     MAGIC_DECLARE;
 };
 
@@ -96,6 +98,7 @@ Options* options_new(gint argc, gchar* argv[]) {
       { "valgrind", 'x', 0, G_OPTION_ARG_NONE, &(options->runValgrind), "Run through valgrind for debugging", NULL },
       { "version", 'v', 0, G_OPTION_ARG_NONE, &(options->printSoftwareVersion), "Print software version and exit", NULL },
       { "turn_off_tls_fix", 'f', 0, G_OPTION_ARG_INT, &(options->turn_off_tls_fix), "Turn on/off tlx-fix mechanism. 1 to turn off and 0 to turn on. [1])", "N"},
+      { "ddes_mode", 'm', 0, G_OPTION_ARG_STRING, &(options->ddes_mode), "Distributed system setting for shadow ('full','master','slave') ['full']", "MODE"},
       { NULL },
     };
 
@@ -215,7 +218,10 @@ Options* options_new(gint argc, gchar* argv[]) {
     if(options->dataTemplatePath == NULL) {
         options->dataTemplatePath = g_strdup("shadow.data.template");
     }
-
+    // BLEEP ddes
+    if(options->ddes_mode == NULL) {
+        options->ddes_mode = g_strdup("full");
+    }
     options->inputXMLFilename = g_string_new(argv[1]);
 
     if(socksend) {
@@ -240,6 +246,8 @@ void options_free(Options* options) {
     g_free(options->interfaceQueuingDiscipline);
     g_free(options->eventSchedulingPolicy);
     g_free(options->tcpCongestionControl);
+    // BLEEP ddes
+    g_free(options->ddes_mode);
     if(options->argstr) {
         g_free(options->argstr);
     }
@@ -269,6 +277,11 @@ LogLevel options_getHeartbeatLogLevel(Options* options) {
     MAGIC_ASSERT(options);
     const gchar* l = (const gchar*) options->heartbeatLogLevelInput;
     return loglevel_fromStr(l);
+}
+DdesMode options_getDdesMode(Options* options) {
+    MAGIC_ASSERT(options);
+    const gchar* m = (const gchar*) options->ddes_mode;
+    return ddesmode_fromStr(m);
 }
 
 SimulationTime options_getHeartbeatInterval(Options* options) {

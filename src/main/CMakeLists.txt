@@ -69,6 +69,7 @@ set(shadow_srcs
     core/work/shd-message.c
     core/work/shd-task.c
     core/work/shd-command.c
+    core/ddes/shd-ddes-mode.c
     core/shd-main.c
     core/shd-master.c
     core/shd-slave.c

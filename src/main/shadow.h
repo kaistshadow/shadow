@@ -125,4 +125,7 @@ gboolean turn_off_tls_fix;
 #include "core/shd-slave.h"
 #include "core/shd-worker.h"
 
+// BLEEP DDES
+#include "core/ddes/shd-ddes-mode.h"
+
 #endif /* SHADOW_H_ */
