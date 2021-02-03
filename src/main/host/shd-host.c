@@ -425,23 +425,6 @@ void host_freeAllApplications(Host* host) {
     debug("done clearing epoll descriptors for host '%s'", host->params.hostname);
 }
 
-void host_freeProcessDescriptors(Host *host, Process *proc) {
-    GHashTableIter iter;
-    gpointer key, value;
-    g_hash_table_iter_init(&iter, host->descriptors);
-    while (g_hash_table_iter_next(&iter, &key, &value)) {
-        Descriptor *descriptor = value;
-
-        if (descriptor->processID != process_getProcessID(proc))
-            continue;
-
-        if (descriptor->type == DT_EPOLL) {
-            epoll_clearWatchListeners((Epoll *) descriptor);
-        } else if (descriptor->type == DT_SOCK) {
-            descriptor_close(descriptor);
-        }
-    }
-}
 
 gint host_compare(gconstpointer a, gconstpointer b, gpointer user_data) {
     const Host *na = a;
@@ -603,18 +586,41 @@ static gint _host_getNextDescriptorHandle(Host* host) {
     return (host->descriptorHandleCounter)++;
 }
 
-static void _host_returnPreviousDescriptorHandle(Host* host, gint handle) {
+static void _host_returnPreviousDescriptorHandle(Host *host, gint handle) {
     MAGIC_ASSERT(host);
-    if(handle >= 3) {
+    if (handle >= 3) {
         g_queue_insert_sorted(host->availableDescriptors, GINT_TO_POINTER(handle), _host_compareDescriptors, NULL);
     }
 }
 
+void host_freeProcessDescriptors(Host *host, Process *proc) {
+    /* first look at shadow internal descriptors */
+    GList *descs = g_hash_table_get_values(host->descriptors);
+    GList *item = g_list_first(descs);
+
+    /* iterate all descriptors */
+    while (item) {
+        Descriptor *desc = item->data;
+        if (desc) {
+            DescriptorStatus status = descriptor_getStatus(desc);
+            if (!(status & DS_CLOSED)) {
+                if (desc->type == DT_TCPSOCKET || desc->type == DT_UDPSOCKET) {
+                    Socket *socket = (Socket *) desc;
+                    _host_disassociateInterface(host, socket);
+                }
+            }
+        }
+        item = g_list_next(item);
+    }
+    /* cleanup the iterator lists */
+    g_list_free(descs);
+}
+
 void host_returnHandleHack(gint handle) {
     /* TODO replace this with something more graceful? */
-    if(worker_isAlive()) {
-        Host* host = worker_getActiveHost();
-        if(host) {
+    if (worker_isAlive()) {
+        Host *host = worker_getActiveHost();
+        if (host) {
             _host_returnPreviousDescriptorHandle(host, handle);
         }
     }
