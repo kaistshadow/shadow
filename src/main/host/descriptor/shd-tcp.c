@@ -1796,9 +1796,20 @@ void tcp_processPacket(TCP* tcp, Packet* packet) {
                 flags |= TCP_PF_PROCESSED;
 
                 /* we need to multiplex a new child */
-                Host* node = worker_getActiveHost();
+                Host *node = worker_getActiveHost();
+
+                //////// In order to use worker_getActiveProcess() during socket initialization
+                // Store the old pointer (for properly updating newly created descriptor's process)
+                Process *oldProc = worker_getActiveProcess();
+                // Set the process of the listening socket as active
+                worker_setActiveProcess(((Descriptor *) tcp)->process);
+
                 gint multiplexedHandle = host_createDescriptor(node, DT_TCPSOCKET);
-                TCP* multiplexed = (TCP*) host_lookupDescriptor(node, multiplexedHandle);
+
+                // Revert to the original active process pointer
+                worker_setActiveProcess(oldProc);
+
+                TCP *multiplexed = (TCP *) host_lookupDescriptor(node, multiplexedHandle);
 
                 multiplexed->child = _tcpchild_new(multiplexed, tcp, header->sourceIP, header->sourcePort);
                 utility_assert(g_hash_table_lookup(tcp->server->children, &(multiplexed->child->key)) == NULL);

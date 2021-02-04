@@ -17,7 +17,7 @@ void descriptor_init(Descriptor* descriptor, DescriptorType type,
     descriptor->type = type;
     descriptor->epollListeners = g_hash_table_new_full(g_int_hash, g_int_equal, NULL, descriptor_unref);
     descriptor->referenceCount = 1;
-//    descriptor->processID = process_getProcessID(worker_getActiveProcess());
+    descriptor->process = worker_getActiveProcess();
 
     worker_countObject(OBJECT_TYPE_DESCRIPTOR, COUNTER_TYPE_NEW);
 }

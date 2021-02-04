@@ -603,7 +603,7 @@ void host_freeProcessDescriptors(Host *host, Process *proc) {
         Descriptor *desc = item->data;
         if (desc) {
             DescriptorStatus status = descriptor_getStatus(desc);
-            if (!(status & DS_CLOSED)) {
+            if (desc->process == proc && !(status & DS_CLOSED)) {
                 if (desc->type == DT_TCPSOCKET || desc->type == DT_UDPSOCKET) {
                     Socket *socket = (Socket *) desc;
                     _host_disassociateInterface(host, socket);
