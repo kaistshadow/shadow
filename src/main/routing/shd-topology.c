@@ -87,6 +87,8 @@ enum _EdgeAttribute {
     EDGE_ATTR_LATENCY=12,
     EDGE_ATTR_PACKETLOSS=13,
     EDGE_ATTR_JITTER=14,
+    EDGE_ATTR_LATENCY_CHANGES=15,
+    EDGE_ATTR_LATENCY_CHANGE_PERIODS=16,
 };
 
 typedef struct _AttachHelper AttachHelper;
@@ -244,6 +246,10 @@ static const gchar* _topology_edgeAttributeToString(EdgeAttribute attr) {
         return "packetloss";
     } else if(attr == EDGE_ATTR_JITTER) {
         return "jitter";
+    } else if(attr == EDGE_ATTR_LATENCY_CHANGES) {
+        return "latency_changes";
+    } else if(attr == EDGE_ATTR_LATENCY_CHANGE_PERIODS) {
+        return "latency_change_periods";
     } else {
         return "unknown";
     }
@@ -256,6 +262,10 @@ static gint _topology_edgeAttributeLength(EdgeAttribute attr) {
         return 10;
     } else if(attr == EDGE_ATTR_JITTER) {
         return 6;
+    } else if(attr == EDGE_ATTR_LATENCY_CHANGES) {
+        return 15;
+    } else if(attr == EDGE_ATTR_LATENCY_CHANGE_PERIODS) {
+        return 22;
     } else {
         return 7;
     }
@@ -351,6 +361,45 @@ static gboolean _topology_findEdgeAttributeDouble(Topology* top, igraph_integer_
     }
 
     return FALSE;
+}
+
+static gboolean _topology_findEdgeAttributeString(Topology* top, igraph_integer_t edgeIndex,
+                                                  EdgeAttribute attr, const gchar** valueOut) {
+    MAGIC_ASSERT(top);
+
+    const gchar* name = _topology_edgeAttributeToString(attr);
+
+    if(igraph_cattribute_has_attr(&top->graph, IGRAPH_ATTRIBUTE_EDGE, name)) {
+        const gchar* value = igraph_cattribute_EAS(&top->graph, name, edgeIndex);
+        if(value != NULL && value[0] != '\0') {
+            if(valueOut != NULL) {
+                *valueOut = value;
+                return TRUE;
+            }
+        }
+    }
+
+    return FALSE;
+}
+
+static void _topology_clearCache(Topology* top); // forward declaration
+int update_edge_latency(Topology* top, igraph_integer_t eid, igraph_real_t value) {
+    MAGIC_ASSERT(top);
+    const gchar* latencyKey = _topology_edgeAttributeToString(EDGE_ATTR_LATENCY);
+    int err = igraph_cattribute_EAN_set(&top->graph, latencyKey, eid, value);
+    if (!err) {
+        // It might be costly. apply better solution for changing only affected paths, not all paths by clearing whole cache
+        _topology_clearCache(top);
+    }
+    return err;
+}
+
+gboolean _add_link_events (igraph_integer_t eid, const gchar* latencyChangesStr, const gchar* latencyChangePeriodsStr) {
+    gdouble edgeLatency;
+    // TODO: parse latency value array
+
+    // TODO: parse latency period array
+    return TRUE;
 }
 
 static gboolean _topology_loadGraph(Topology* top, const gchar* graphPath) {
@@ -668,6 +717,10 @@ static gboolean _topology_checkGraphAttributes(Topology* top) {
             isSuccess = _topology_checkAttributeType(name, type, IGRAPH_ATTRIBUTE_NUMERIC);
         } else if(_topology_isValidEdgeAttributeKey(name, EDGE_ATTR_PACKETLOSS)) {
             isSuccess = _topology_checkAttributeType(name, type, IGRAPH_ATTRIBUTE_NUMERIC);
+        } else if(_topology_isValidEdgeAttributeKey(name, EDGE_ATTR_LATENCY_CHANGES)) {
+            isSuccess = _topology_checkAttributeType(name, type, IGRAPH_ATTRIBUTE_STRING);
+        } else if(_topology_isValidEdgeAttributeKey(name, EDGE_ATTR_LATENCY_CHANGE_PERIODS)) {
+            isSuccess = _topology_checkAttributeType(name, type, IGRAPH_ATTRIBUTE_STRING);
         } else {
             info("edge attribute '%s' is unsupported and will be ignored", name);
         }
@@ -1097,6 +1150,19 @@ static gboolean _topology_checkGraphEdgesHelperHook(Topology* top, igraph_intege
             /* its an error if they gave a value that is incorrect */
             warning("optional attribute '%s' on edge %li (from '%s' to '%s') is negative",
                     jitterKey, (glong)edgeIndex, fromIDStr, toIDStr);
+            isSuccess = FALSE;
+        }
+    }
+
+    const gchar* latencyChanges = _topology_edgeAttributeToString(EDGE_ATTR_LATENCY_CHANGES);
+    const gchar* latencyChangePeriods = _topology_edgeAttributeToString(EDGE_ATTR_LATENCY_CHANGE_PERIODS);
+    const gchar* latencyChangesStr;
+    const gchar* latencyChangePeriodsStr;
+    if(igraph_cattribute_has_attr(&top->graph, IGRAPH_ATTRIBUTE_EDGE, latencyChanges) &&
+            igraph_cattribute_has_attr(&top->graph, IGRAPH_ATTRIBUTE_EDGE, latencyChangePeriods) &&
+            _topology_findEdgeAttributeString(top, edgeIndex, EDGE_ATTR_LATENCY_CHANGES, &latencyChangesStr) &&
+            _topology_findEdgeAttributeString(top, edgeIndex, EDGE_ATTR_LATENCY_CHANGE_PERIODS, &latencyChangePeriodsStr)) {
+        if(!_add_link_events(edgeIndex, latencyChangesStr, latencyChangePeriodsStr)) {
             isSuccess = FALSE;
         }
     }
