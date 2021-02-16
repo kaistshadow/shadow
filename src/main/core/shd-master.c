@@ -222,6 +222,9 @@ static gboolean _master_loadTopology(Master* master) {
 
     /* initialize global DNS addressing */
     master->dns = dns_new();
+
+    GQueue* linkChanges = topology_getLinkEvents(master->topology);
+//    systemEvent_pushEvents(master->system_events, linkChanges); // TODO
     return TRUE;
 }
 
@@ -245,6 +248,9 @@ static void _master_initializeTimeWindows(Master* master) {
         master->executeWindowStart = 0;
         master->executeWindowEnd = G_MAXUINT64;
     }
+    // while windowStart is (larger than / same as) nextSystemEvent, process nextSystemEvent and pop it, load next systemEvent.
+    // if windowEnd is larger than nextSystemEvent time, change windowEnd to nextSystemEvent.
+//    systemEvent_try_process(&master->executeWindowEnd); // TODO
 
     /* check if we run in unlimited bandwidth mode */
     ConfigurationShadowElement* shadowElm = configuration_getShadowElement(master->config);
@@ -489,6 +495,10 @@ gboolean master_slaveFinishedCurrentRound(Master* master, SimulationTime minNext
     /* finally, set the new values */
     master->executeWindowStart = newStart;
     master->executeWindowEnd = newEnd;
+
+    // while windowStart is (larger than / same as) nextSystemEvent, process nextSystemEvent and pop it, load next systemEvent.
+    // if windowEnd is larger than nextSystemEvent time, change windowEnd to nextSystemEvent.
+//    systemEvent_try_process(&master->executeWindowEnd); // TODO
 
     *executeWindowStart = master->executeWindowStart;
     *executeWindowEnd = master->executeWindowEnd;

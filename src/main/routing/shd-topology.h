@@ -9,6 +9,7 @@
 
 #include "shadow.h"
 
+typedef struct _LinkChange LinkChange;
 typedef struct _Topology Topology;
 
 Topology* topology_new(const gchar* graphPath);
@@ -23,5 +24,10 @@ gboolean topology_isRoutable(Topology* top, Address* srcAddress, Address* dstAdd
 gdouble topology_getLatency(Topology* top, Address* srcAddress, Address* dstAddress);
 gdouble topology_getReliability(Topology* top, Address* srcAddress, Address* dstAddress);
 void topology_incrementPathPacketCounter(Topology* top, Address* srcAddress, Address* dstAddress);
+
+void update_edge_latency(Topology* top, LinkChange* linkChange);
+GQueue* topology_getLinkEvents(Topology* top);
+void linkChange_debugPrint(LinkChange* lc);
+void linkChange_unref(LinkChange* lc);
 
 #endif /* SHD_TOPOLOGY_H_ */

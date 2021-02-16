@@ -6,6 +6,26 @@
 
 #include "shadow.h"
 
+struct _LinkChange {
+    igraph_integer_t eid;
+    igraph_real_t latency;
+    long int period;
+};
+LinkChange* linkChange_new(igraph_integer_t edgeIndex, igraph_real_t latency, long int period) {
+    LinkChange* lc = g_new0(LinkChange, 1);
+    lc->eid = edgeIndex;
+    lc->latency = latency;
+    lc->period = period;
+    return lc;
+}
+void linkChange_unref(LinkChange* lc) {
+    g_free(lc);
+}
+void linkChange_debugPrint(LinkChange* lc) {
+    printf("Link Change Debug - edge: %d, latency: %lf, period: %d", lc->eid, lc->latency, lc->period);
+}
+
+
 struct _Topology {
     /* the imported igraph graph data - operations on it after initializations
      * MUST be locked in cases where igraph is not thread-safe! */
@@ -87,8 +107,8 @@ enum _EdgeAttribute {
     EDGE_ATTR_LATENCY=12,
     EDGE_ATTR_PACKETLOSS=13,
     EDGE_ATTR_JITTER=14,
-    EDGE_ATTR_LATENCY_CHANGES=15,
-    EDGE_ATTR_LATENCY_CHANGE_PERIODS=16,
+    EDGE_ATTR_LATENCY_CHANGES=15,   // BLEEP link failure
+    EDGE_ATTR_LATENCY_CHANGE_PERIODS=16,   // BLEEP link failure
 };
 
 typedef struct _AttachHelper AttachHelper;
@@ -247,9 +267,9 @@ static const gchar* _topology_edgeAttributeToString(EdgeAttribute attr) {
     } else if(attr == EDGE_ATTR_JITTER) {
         return "jitter";
     } else if(attr == EDGE_ATTR_LATENCY_CHANGES) {
-        return "latency_changes";
+        return "latency_changes";       // BLEEP link failure
     } else if(attr == EDGE_ATTR_LATENCY_CHANGE_PERIODS) {
-        return "latency_change_periods";
+        return "latency_change_periods";    // BLEEP link failure
     } else {
         return "unknown";
     }
@@ -263,9 +283,9 @@ static gint _topology_edgeAttributeLength(EdgeAttribute attr) {
     } else if(attr == EDGE_ATTR_JITTER) {
         return 6;
     } else if(attr == EDGE_ATTR_LATENCY_CHANGES) {
-        return 15;
+        return 15;  // BLEEP link failure
     } else if(attr == EDGE_ATTR_LATENCY_CHANGE_PERIODS) {
-        return 22;
+        return 22;  // BLEEP link failure
     } else {
         return 7;
     }
@@ -363,6 +383,7 @@ static gboolean _topology_findEdgeAttributeDouble(Topology* top, igraph_integer_
     return FALSE;
 }
 
+// BLEEP link failure
 static gboolean _topology_findEdgeAttributeString(Topology* top, igraph_integer_t edgeIndex,
                                                   EdgeAttribute attr, const gchar** valueOut) {
     MAGIC_ASSERT(top);
@@ -382,23 +403,89 @@ static gboolean _topology_findEdgeAttributeString(Topology* top, igraph_integer_
     return FALSE;
 }
 
+// BLEEP link failure
 static void _topology_clearCache(Topology* top); // forward declaration
-int update_edge_latency(Topology* top, igraph_integer_t eid, igraph_real_t value) {
+void update_edge_latency(Topology* top, LinkChange* linkChange) {
     MAGIC_ASSERT(top);
     const gchar* latencyKey = _topology_edgeAttributeToString(EDGE_ATTR_LATENCY);
-    int err = igraph_cattribute_EAN_set(&top->graph, latencyKey, eid, value);
-    if (!err) {
-        // It might be costly. apply better solution for changing only affected paths, not all paths by clearing whole cache
-        _topology_clearCache(top);
+    int err = igraph_cattribute_EAN_set(&top->graph, latencyKey, linkChange->eid, linkChange->latency);
+    if (err) {
+        // TODO: error
+        abort();
+        return;
     }
-    return err;
+    // It might be costly. apply better solution for changing only affected paths, not all paths by clearing whole cache
+    _topology_clearCache(top);
+    return;
 }
 
-gboolean _add_link_events (igraph_integer_t eid, const gchar* latencyChangesStr, const gchar* latencyChangePeriodsStr) {
-    gdouble edgeLatency;
-    // TODO: parse latency value array
+// BLEEP link failure
+int get_next_latency_change(const gchar* str, double *latency_out) {
+    if (str[0] == 0) {
+        return 0;
+    }
+    char* end;
+    *latency_out = strtod(str, &end);
+    if(end[0] == 0) {
+        return (int)(end - str);
+    } else if(end[0] == ' ') {
+        return (int)(end - str) + 1;
+    } else {
+        // error case
+        return -1;
+    }
+}
 
-    // TODO: parse latency period array
+// BLEEP link failure
+int get_next_latency_change_period(const gchar* str, long int *period) {
+    if (str[0] == 0) {
+        return 0;
+    }
+    char* end;
+    *period = strtol(str, &end, 10);
+    if(end[0] == 0) {
+        return (int)(end - str);
+    } else if(end[0] == ' ') {
+        return (int)(end - str) + 1;
+    } else {
+        // error case
+        return -1;
+    }
+}
+
+// BLEEP link failure
+static gboolean _add_link_events (Topology* top, igraph_integer_t edgeIndex, gpointer linkEvents) {
+    const gchar* latencyChanges = _topology_edgeAttributeToString(EDGE_ATTR_LATENCY_CHANGES);
+    const gchar* latencyChangePeriods = _topology_edgeAttributeToString(EDGE_ATTR_LATENCY_CHANGE_PERIODS);
+    const gchar* latencyChangesStr;
+    const gchar* latencyChangePeriodsStr;
+    if(igraph_cattribute_has_attr(&top->graph, IGRAPH_ATTRIBUTE_EDGE, latencyChanges) &&
+       igraph_cattribute_has_attr(&top->graph, IGRAPH_ATTRIBUTE_EDGE, latencyChangePeriods) &&
+       _topology_findEdgeAttributeString(top, edgeIndex, EDGE_ATTR_LATENCY_CHANGES, &latencyChangesStr) &&
+       _topology_findEdgeAttributeString(top, edgeIndex, EDGE_ATTR_LATENCY_CHANGE_PERIODS, &latencyChangePeriodsStr)) {
+
+        int event_parse_continue = 1;
+        int lc_idx = 0;
+        int lcp_idx = 0;
+        while(event_parse_continue) {
+            double latency;
+            long int period;
+            int i = get_next_latency_change(&latencyChangesStr[lc_idx], &latency);
+            int j = get_next_latency_change_period(&latencyChangePeriodsStr[lcp_idx], &period);
+            if (i == 0 && j == 0) {
+                // end
+                break;
+            } else if (i <= 0 || j <= 0) {
+                // TODO 2: error
+                abort();
+            }
+            LinkChange* linkChange = linkChange_new(edgeIndex, latency, period);
+            g_queue_push_tail(linkEvents, linkChange);
+            // parse next
+            lc_idx += i;
+            lcp_idx += j;
+        }
+    }
     return TRUE;
 }
 
@@ -718,9 +805,9 @@ static gboolean _topology_checkGraphAttributes(Topology* top) {
         } else if(_topology_isValidEdgeAttributeKey(name, EDGE_ATTR_PACKETLOSS)) {
             isSuccess = _topology_checkAttributeType(name, type, IGRAPH_ATTRIBUTE_NUMERIC);
         } else if(_topology_isValidEdgeAttributeKey(name, EDGE_ATTR_LATENCY_CHANGES)) {
-            isSuccess = _topology_checkAttributeType(name, type, IGRAPH_ATTRIBUTE_STRING);
+            isSuccess = _topology_checkAttributeType(name, type, IGRAPH_ATTRIBUTE_STRING);  // BLEEP link failure
         } else if(_topology_isValidEdgeAttributeKey(name, EDGE_ATTR_LATENCY_CHANGE_PERIODS)) {
-            isSuccess = _topology_checkAttributeType(name, type, IGRAPH_ATTRIBUTE_STRING);
+            isSuccess = _topology_checkAttributeType(name, type, IGRAPH_ATTRIBUTE_STRING);  // BLEEP link failure
         } else {
             info("edge attribute '%s' is unsupported and will be ignored", name);
         }
@@ -1150,19 +1237,6 @@ static gboolean _topology_checkGraphEdgesHelperHook(Topology* top, igraph_intege
             /* its an error if they gave a value that is incorrect */
             warning("optional attribute '%s' on edge %li (from '%s' to '%s') is negative",
                     jitterKey, (glong)edgeIndex, fromIDStr, toIDStr);
-            isSuccess = FALSE;
-        }
-    }
-
-    const gchar* latencyChanges = _topology_edgeAttributeToString(EDGE_ATTR_LATENCY_CHANGES);
-    const gchar* latencyChangePeriods = _topology_edgeAttributeToString(EDGE_ATTR_LATENCY_CHANGE_PERIODS);
-    const gchar* latencyChangesStr;
-    const gchar* latencyChangePeriodsStr;
-    if(igraph_cattribute_has_attr(&top->graph, IGRAPH_ATTRIBUTE_EDGE, latencyChanges) &&
-            igraph_cattribute_has_attr(&top->graph, IGRAPH_ATTRIBUTE_EDGE, latencyChangePeriods) &&
-            _topology_findEdgeAttributeString(top, edgeIndex, EDGE_ATTR_LATENCY_CHANGES, &latencyChangesStr) &&
-            _topology_findEdgeAttributeString(top, edgeIndex, EDGE_ATTR_LATENCY_CHANGE_PERIODS, &latencyChangePeriodsStr)) {
-        if(!_add_link_events(edgeIndex, latencyChangesStr, latencyChangePeriodsStr)) {
             isSuccess = FALSE;
         }
     }
@@ -2558,4 +2632,12 @@ Topology* topology_new(const gchar* graphPath) {
     }
 
     return top;
+}
+
+GQueue* topology_getLinkEvents(Topology* top) {
+    GQueue* linkEvents = g_queue_new();
+
+    _topology_iterateAllEdges(top, _add_link_events, linkEvents);
+
+    return linkEvents;
 }

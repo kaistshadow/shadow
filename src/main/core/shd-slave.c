@@ -402,6 +402,7 @@ static void _slave_heartbeat(Slave* slave, SimulationTime simClockNow) {
 void slave_run(Slave* slave) {
     MAGIC_ASSERT(slave);
     if(scheduler_getPolicy(slave->scheduler) == SP_SERIAL_GLOBAL) {
+        // TODO: process system event on SP_SERIAL_GLOBAL (BLEEP)
         scheduler_start(slave->scheduler);
 
         /* the main slave thread becomes the only worker and runs everything */
