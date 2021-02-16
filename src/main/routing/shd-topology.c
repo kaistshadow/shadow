@@ -6,26 +6,6 @@
 
 #include "shadow.h"
 
-struct _LinkChange {
-    igraph_integer_t eid;
-    igraph_real_t latency;
-    long int period;
-};
-LinkChange* linkChange_new(igraph_integer_t edgeIndex, igraph_real_t latency, long int period) {
-    LinkChange* lc = g_new0(LinkChange, 1);
-    lc->eid = edgeIndex;
-    lc->latency = latency;
-    lc->period = period;
-    return lc;
-}
-void linkChange_unref(LinkChange* lc) {
-    g_free(lc);
-}
-void linkChange_debugPrint(LinkChange* lc) {
-    printf("Link Change Debug - edge: %d, latency: %lf, period: %d", lc->eid, lc->latency, lc->period);
-}
-
-
 struct _Topology {
     /* the imported igraph graph data - operations on it after initializations
      * MUST be locked in cases where igraph is not thread-safe! */
@@ -82,6 +62,75 @@ struct _Topology {
 
     MAGIC_DECLARE;
 };
+
+// BLEEP Link Failre Impl.
+struct _LinkEvent {
+    igraph_integer_t eid;
+    igraph_real_t latency;
+    long int period;
+};
+LinkEvent* _linkevent_new(igraph_integer_t edgeIndex, igraph_real_t latency, long int period) {
+    LinkEvent* lc = g_new0(LinkEvent, 1);
+    lc->eid = edgeIndex;
+    lc->latency = latency;
+    lc->period = period;
+    return lc;
+}
+gint _linkevent_compare(const LinkEvent* a, const LinkEvent* b, gpointer userData) {
+    if (a->period > b->period) {
+        return 1;
+    } else if (a->period < b->period) {
+        return -1;
+    } else {
+        if (a->eid > b->eid) {
+            return 1;
+        } else if (a->eid < b->eid) {
+            return -1;
+        } else {
+            return 0;
+        }
+    }
+}
+void _linkevent_free(LinkEvent* lc) {
+    g_free(lc);
+}
+// BLEEP Link Failre Impl.
+struct _LinkControl {
+    Topology* top;
+    PriorityQueue* pq;
+};
+LinkControl* linkcontrol_new(Topology* top) {
+    LinkControl* levs = g_new0(LinkControl, 1);
+    levs->top = top;
+    levs->pq = priorityqueue_new((GCompareDataFunc)_linkevent_compare, NULL, (GDestroyNotify)_linkevent_free);
+    return levs;
+}
+void linkcontrol_free(LinkControl* levs) {
+    priorityqueue_free(levs->pq);
+    g_free(levs);
+}
+void linkcontrol_pushLinkEvents(LinkControl* levs, GQueue* linkEvents) {
+    while (!g_queue_is_empty(linkEvents)) {
+        LinkEvent* lc = g_queue_pop_head(linkEvents);
+        priorityqueue_push(levs->pq, lc);
+    }
+}
+void linkcontrol_try_process(LinkControl* levs, SimulationTime startTargetWindow, SimulationTime* endTargetWindow) {
+    LinkEvent* le = priorityqueue_peek(levs->pq);
+
+    // while windowStart is (larger than / same as) nextSystemEvent, process nextSystemEvent and pop it, load next systemEvent.
+    while(le && le->period <= startTargetWindow) {
+        _update_edge_latency(levs->top, le);
+        priorityqueue_pop(levs->pq);
+        _linkevent_free(le);
+        // iterate
+        le = priorityqueue_peek(levs->pq);
+    }
+    // if windowEnd is larger than nextSystemEvent time, change windowEnd to nextSystemEvent.
+    if (le && le->period < *endTargetWindow) {
+        *endTargetWindow = le->period;
+    }
+}
 
 typedef enum _GraphAttribute GraphAttribute;
 enum _GraphAttribute {
@@ -404,22 +453,6 @@ static gboolean _topology_findEdgeAttributeString(Topology* top, igraph_integer_
 }
 
 // BLEEP link failure
-static void _topology_clearCache(Topology* top); // forward declaration
-void update_edge_latency(Topology* top, LinkChange* linkChange) {
-    MAGIC_ASSERT(top);
-    const gchar* latencyKey = _topology_edgeAttributeToString(EDGE_ATTR_LATENCY);
-    int err = igraph_cattribute_EAN_set(&top->graph, latencyKey, linkChange->eid, linkChange->latency);
-    if (err) {
-        // TODO: error
-        abort();
-        return;
-    }
-    // It might be costly. apply better solution for changing only affected paths, not all paths by clearing whole cache
-    _topology_clearCache(top);
-    return;
-}
-
-// BLEEP link failure
 int get_next_latency_change(const gchar* str, double *latency_out) {
     if (str[0] == 0) {
         return 0;
@@ -451,42 +484,6 @@ int get_next_latency_change_period(const gchar* str, long int *period) {
         // error case
         return -1;
     }
-}
-
-// BLEEP link failure
-static gboolean _add_link_events (Topology* top, igraph_integer_t edgeIndex, gpointer linkEvents) {
-    const gchar* latencyChanges = _topology_edgeAttributeToString(EDGE_ATTR_LATENCY_CHANGES);
-    const gchar* latencyChangePeriods = _topology_edgeAttributeToString(EDGE_ATTR_LATENCY_CHANGE_PERIODS);
-    const gchar* latencyChangesStr;
-    const gchar* latencyChangePeriodsStr;
-    if(igraph_cattribute_has_attr(&top->graph, IGRAPH_ATTRIBUTE_EDGE, latencyChanges) &&
-       igraph_cattribute_has_attr(&top->graph, IGRAPH_ATTRIBUTE_EDGE, latencyChangePeriods) &&
-       _topology_findEdgeAttributeString(top, edgeIndex, EDGE_ATTR_LATENCY_CHANGES, &latencyChangesStr) &&
-       _topology_findEdgeAttributeString(top, edgeIndex, EDGE_ATTR_LATENCY_CHANGE_PERIODS, &latencyChangePeriodsStr)) {
-
-        int event_parse_continue = 1;
-        int lc_idx = 0;
-        int lcp_idx = 0;
-        while(event_parse_continue) {
-            double latency;
-            long int period;
-            int i = get_next_latency_change(&latencyChangesStr[lc_idx], &latency);
-            int j = get_next_latency_change_period(&latencyChangePeriodsStr[lcp_idx], &period);
-            if (i == 0 && j == 0) {
-                // end
-                break;
-            } else if (i <= 0 || j <= 0) {
-                // TODO 2: error
-                abort();
-            }
-            LinkChange* linkChange = linkChange_new(edgeIndex, latency, period);
-            g_queue_push_tail(linkEvents, linkChange);
-            // parse next
-            lc_idx += i;
-            lcp_idx += j;
-        }
-    }
-    return TRUE;
 }
 
 static gboolean _topology_loadGraph(Topology* top, const gchar* graphPath) {
@@ -2634,10 +2631,59 @@ Topology* topology_new(const gchar* graphPath) {
     return top;
 }
 
+// BLEEP link failure
+static gboolean _add_link_events (Topology* top, igraph_integer_t edgeIndex, gpointer linkEvents) {
+    const gchar* latencyChanges = _topology_edgeAttributeToString(EDGE_ATTR_LATENCY_CHANGES);
+    const gchar* latencyChangePeriods = _topology_edgeAttributeToString(EDGE_ATTR_LATENCY_CHANGE_PERIODS);
+    const gchar* latencyChangesStr;
+    const gchar* latencyChangePeriodsStr;
+    if(igraph_cattribute_has_attr(&top->graph, IGRAPH_ATTRIBUTE_EDGE, latencyChanges) &&
+       igraph_cattribute_has_attr(&top->graph, IGRAPH_ATTRIBUTE_EDGE, latencyChangePeriods) &&
+       _topology_findEdgeAttributeString(top, edgeIndex, EDGE_ATTR_LATENCY_CHANGES, &latencyChangesStr) &&
+       _topology_findEdgeAttributeString(top, edgeIndex, EDGE_ATTR_LATENCY_CHANGE_PERIODS, &latencyChangePeriodsStr)) {
+
+        int event_parse_continue = 1;
+        int lc_idx = 0;
+        int lcp_idx = 0;
+        while(event_parse_continue) {
+            double latency;
+            long int period;
+            int i = get_next_latency_change(&latencyChangesStr[lc_idx], &latency);
+            int j = get_next_latency_change_period(&latencyChangePeriodsStr[lcp_idx], &period);
+            if (i == 0 && j == 0) {
+                // end
+                break;
+            } else if (i <= 0 || j <= 0) {
+                // TODO 2: error
+                abort();
+            }
+            LinkEvent* le = _linkevent_new(edgeIndex, latency, period);
+            g_queue_push_tail(linkEvents, le);
+            // parse next
+            lc_idx += i;
+            lcp_idx += j;
+        }
+    }
+    return TRUE;
+}
+// BLEEP link failure
 GQueue* topology_getLinkEvents(Topology* top) {
     GQueue* linkEvents = g_queue_new();
 
     _topology_iterateAllEdges(top, _add_link_events, linkEvents);
 
     return linkEvents;
+}
+void _update_edge_latency(Topology* top, LinkEvent* le) {
+    MAGIC_ASSERT(top);
+    const gchar* latencyKey = _topology_edgeAttributeToString(EDGE_ATTR_LATENCY);
+    int err = igraph_cattribute_EAN_set(&top->graph, latencyKey, le->eid, le->latency);
+    if (err) {
+        // TODO: error
+        abort();
+        return;
+    }
+    // It might be costly. apply better solution for changing only affected paths, not all paths by clearing whole cache
+    _topology_clearCache(top);
+    return;
 }

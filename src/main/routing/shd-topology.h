@@ -9,7 +9,6 @@
 
 #include "shadow.h"
 
-typedef struct _LinkChange LinkChange;
 typedef struct _Topology Topology;
 
 Topology* topology_new(const gchar* graphPath);
@@ -25,9 +24,15 @@ gdouble topology_getLatency(Topology* top, Address* srcAddress, Address* dstAddr
 gdouble topology_getReliability(Topology* top, Address* srcAddress, Address* dstAddress);
 void topology_incrementPathPacketCounter(Topology* top, Address* srcAddress, Address* dstAddress);
 
-void update_edge_latency(Topology* top, LinkChange* linkChange);
+// BLEEP Link Failure Impl.
+typedef struct _LinkEvent LinkEvent;
+typedef struct _LinkControl LinkControl;
+LinkControl* linkcontrol_new(Topology* top);
+void linkcontrol_free(LinkControl* levs);
+void linkcontrol_pushLinkEvents(LinkControl* levs, GQueue* linkEvents);
+void linkcontrol_try_process(LinkControl* levs, SimulationTime startTargetWindow, SimulationTime* endTargetWindow);
+// BLEEP Link Failure Control Impl.
+static void _update_edge_latency(Topology* top, LinkEvent* linkEvents);
 GQueue* topology_getLinkEvents(Topology* top);
-void linkChange_debugPrint(LinkChange* lc);
-void linkChange_unref(LinkChange* lc);
 
 #endif /* SHD_TOPOLOGY_H_ */

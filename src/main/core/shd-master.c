@@ -34,6 +34,7 @@ struct _Master {
 
     /* global network connectivity info */
     Topology* topology;
+    LinkControl* link_control;
     DNS* dns;
 
     /* minimum allowed time jump when sending events between nodes */
@@ -101,6 +102,8 @@ void master_free(Master* master) {
 
     if(master->topology) {
         topology_free(master->topology);
+        // BLEEP Link Failure Impl.
+        linkcontrol_free(master->link_control);
     }
     if(master->dns) {
         dns_free(master->dns);
@@ -223,8 +226,10 @@ static gboolean _master_loadTopology(Master* master) {
     /* initialize global DNS addressing */
     master->dns = dns_new();
 
-    GQueue* linkChanges = topology_getLinkEvents(master->topology);
-//    systemEvent_pushEvents(master->system_events, linkChanges); // TODO
+    /* BLEEP Link Failure Impl. */
+    master->link_control = linkcontrol_new(master->topology);
+    GQueue* linkEvents = topology_getLinkEvents(master->topology);
+    linkcontrol_pushLinkEvents(master->link_control, linkEvents);
     return TRUE;
 }
 
@@ -248,9 +253,9 @@ static void _master_initializeTimeWindows(Master* master) {
         master->executeWindowStart = 0;
         master->executeWindowEnd = G_MAXUINT64;
     }
-    // while windowStart is (larger than / same as) nextSystemEvent, process nextSystemEvent and pop it, load next systemEvent.
-    // if windowEnd is larger than nextSystemEvent time, change windowEnd to nextSystemEvent.
-//    systemEvent_try_process(&master->executeWindowEnd); // TODO
+
+    // BLEEP Link Failure Impl.
+    linkcontrol_try_process(master->link_control, master->executeWindowStart, &master->executeWindowEnd);
 
     /* check if we run in unlimited bandwidth mode */
     ConfigurationShadowElement* shadowElm = configuration_getShadowElement(master->config);
@@ -496,9 +501,8 @@ gboolean master_slaveFinishedCurrentRound(Master* master, SimulationTime minNext
     master->executeWindowStart = newStart;
     master->executeWindowEnd = newEnd;
 
-    // while windowStart is (larger than / same as) nextSystemEvent, process nextSystemEvent and pop it, load next systemEvent.
-    // if windowEnd is larger than nextSystemEvent time, change windowEnd to nextSystemEvent.
-//    systemEvent_try_process(&master->executeWindowEnd); // TODO
+    // BLEEP Link Failure Impl.
+    linkcontrol_try_process(master->link_control, master->executeWindowStart, &master->executeWindowEnd); // TODO
 
     *executeWindowStart = master->executeWindowStart;
     *executeWindowEnd = master->executeWindowEnd;
