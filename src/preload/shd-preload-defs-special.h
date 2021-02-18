@@ -58,6 +58,7 @@ PRELOADDEF(return, int, shadow_clock_gettime, (clockid_t a, struct timespec *b),
 
 // BLEEP attacker support
 PRELOADDEF(return, int, shadow_bind, (int fd, const struct sockaddr* addr, socklen_t len), fd, addr, len);
+PRELOADDEF(return, int, shadow_register_NIC, (const struct sockaddr* addr, socklen_t len), addr, len);
 
 // BLEEP Shared Entry Functions
 PRELOADDEF(return, void*, shadow_claim_shared_entry, (void* ptr, size_t sz, int shared_id), ptr, sz, shared_id);

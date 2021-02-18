@@ -448,6 +448,7 @@ int process_emu_ppoll(Process* proc, struct pollfd *fds, nfds_t nfds, const stru
 
 /* BLEEP related functions*/
 // BLEEP attacker support
+int process_emu_shadow_register_NIC(Process* proc, const struct sockaddr* addr, socklen_t len);
 int process_emu_shadow_bind(Process* proc, int fd, const struct sockaddr* addr, socklen_t len);
 
 // BLEEP Shared Entry Functions
