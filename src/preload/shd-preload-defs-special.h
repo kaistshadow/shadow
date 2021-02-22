@@ -69,15 +69,6 @@ PRELOADDEF(return, int, shadow_assign_virtual_id, (void));
 
 // Memory Instrumentation Marker Functions
 PRELOADDEF(return, void, shadow_instrumentation_marker_set, (int file_symbol, int line_cnt), file_symbol, line_cnt);
-PRELOADDEF(return, int, copy_dat_files, (int fileno), fileno);
-PRELOADDEF(return, int, compare_dat_files, (int fileno), fileno);
-PRELOADDEF(return, char*, make_actual_path,(int fileno),fileno);
-PRELOADDEF(return, char*, get_dat_file_path, (int fileno),fileno);
-PRELOADDEF(return, char*, get_tmp_file_path,(void));
-PRELOADDEF(return, char*, get_actual_path,(int fileno),fileno);
-
-PRELOADDEF(return, void, shadow_bitcoin_register_hash,(const char hash[]),hash);
-PRELOADDEF(return, int, shadow_bitcoin_check_hash,(const char hash[]),hash);
 
 //BLEEP TPS interface
 PRELOADDEF(return, void, update_log_map,(const char prevblockhash[], const char blockhash[],const int txcount, const int height),prevblockhash, blockhash, txcount, height);
