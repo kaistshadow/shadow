@@ -57,24 +57,39 @@ void host_setup(Host* host, DNS* dns, Topology* topology, guint rawCPUFreq, cons
 void host_boot(Host* host);
 void host_shutdown(Host* host);
 
-guint host_getNewProcessID(Host* host);
-guint64 host_getNewEventID(Host* host);
-guint64 host_getNewPacketID(Host* host);
-void host_addApplication(Host* host, SimulationTime startTime, SimulationTime stopTime,
-        const gchar* pluginName, const gchar* pluginPath, const gchar* pluginSymbol,
-        const gchar* preloadName, const gchar* preloadPath, gchar* arguments);
-void host_addCommand(Host* host, gchar* id, SimulationTime startTime, gchar* arguments);
-void host_freeAllApplications(Host* host);
+guint host_getNewProcessID(Host *host);
+
+guint64 host_getNewEventID(Host *host);
+
+guint64 host_getNewPacketID(Host *host);
+
+void host_addApplication(Host *host, SimulationTime startTime, SimulationTime stopTime,
+                         const gchar *pluginName, const gchar *pluginPath, const gchar *pluginSymbol,
+                         const gchar *preloadName, const gchar *preloadPath, gchar *arguments);
+
+void host_addCommand(Host *host, gchar *id, SimulationTime startTime, gchar *arguments);
+
+void host_freeAllApplications(Host *host);
+
+void host_freeProcessDescriptors(Host *host, Process *proc);
 
 gint host_compare(gconstpointer a, gconstpointer b, gpointer user_data);
-GQuark host_getID(Host* host);
-gboolean host_isEqual(Host* a, Host* b);
-CPU* host_getCPU(Host* host);
-gchar* host_getName(Host* host);
-Address* host_getDefaultAddress(Host* host);
-in_addr_t host_getDefaultIP(Host* host);
-Random* host_getRandom(Host* host);
-gdouble host_getNextPacketPriority(Host* host);
+
+GQuark host_getID(Host *host);
+
+gboolean host_isEqual(Host *a, Host *b);
+
+CPU *host_getCPU(Host *host);
+
+gchar *host_getName(Host *host);
+
+Address *host_getDefaultAddress(Host *host);
+
+in_addr_t host_getDefaultIP(Host *host);
+
+Random *host_getRandom(Host *host);
+
+gdouble host_getNextPacketPriority(Host *host);
 
 gboolean host_autotuneReceiveBuffer(Host* host);
 gboolean host_autotuneSendBuffer(Host* host);

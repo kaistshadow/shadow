@@ -406,7 +406,7 @@ void host_freeAllApplications(Host* host) {
     MAGIC_ASSERT(host);
     debug("start freeing applications for host '%s'", host->params.hostname);
     while(!g_queue_is_empty(host->processes)) {
-        Process* proc = g_queue_pop_head(host->processes);
+        Process *proc = g_queue_pop_head(host->processes);
         process_stop(proc);
         process_unref(proc);
     }
@@ -416,27 +416,28 @@ void host_freeAllApplications(Host* host) {
     GHashTableIter iter;
     gpointer key, value;
     g_hash_table_iter_init(&iter, host->descriptors);
-    while(g_hash_table_iter_next(&iter, &key, &value)) {
-        Descriptor* descriptor = value;
-        if(descriptor->type == DT_EPOLL) {
-            epoll_clearWatchListeners((Epoll*) descriptor);
+    while (g_hash_table_iter_next(&iter, &key, &value)) {
+        Descriptor *descriptor = value;
+        if (descriptor->type == DT_EPOLL) {
+            epoll_clearWatchListeners((Epoll *) descriptor);
         }
     }
     debug("done clearing epoll descriptors for host '%s'", host->params.hostname);
 }
 
+
 gint host_compare(gconstpointer a, gconstpointer b, gpointer user_data) {
-    const Host* na = a;
-    const Host* nb = b;
+    const Host *na = a;
+    const Host *nb = b;
     MAGIC_ASSERT(na);
     MAGIC_ASSERT(nb);
     return na->params.id > nb->params.id ? +1 : na->params.id < nb->params.id ? -1 : 0;
 }
 
-gboolean host_isEqual(Host* a, Host* b) {
-    if(a == NULL && b == NULL) {
+gboolean host_isEqual(Host *a, Host *b) {
+    if (a == NULL && b == NULL) {
         return TRUE;
-    } else if(a == NULL || b == NULL) {
+    } else if (a == NULL || b == NULL) {
         return FALSE;
     } else {
         return host_compare(a, b, NULL) == 0;
@@ -585,18 +586,41 @@ static gint _host_getNextDescriptorHandle(Host* host) {
     return (host->descriptorHandleCounter)++;
 }
 
-static void _host_returnPreviousDescriptorHandle(Host* host, gint handle) {
+static void _host_returnPreviousDescriptorHandle(Host *host, gint handle) {
     MAGIC_ASSERT(host);
-    if(handle >= 3) {
+    if (handle >= 3) {
         g_queue_insert_sorted(host->availableDescriptors, GINT_TO_POINTER(handle), _host_compareDescriptors, NULL);
     }
 }
 
+void host_freeProcessDescriptors(Host *host, Process *proc) {
+    /* first look at shadow internal descriptors */
+    GList *descs = g_hash_table_get_values(host->descriptors);
+    GList *item = g_list_first(descs);
+
+    /* iterate all descriptors */
+    while (item) {
+        Descriptor *desc = item->data;
+        if (desc) {
+            DescriptorStatus status = descriptor_getStatus(desc);
+            if (desc->process == proc && !(status & DS_CLOSED)) {
+                if (desc->type == DT_TCPSOCKET || desc->type == DT_UDPSOCKET) {
+                    Socket *socket = (Socket *) desc;
+                    _host_disassociateInterface(host, socket);
+                }
+            }
+        }
+        item = g_list_next(item);
+    }
+    /* cleanup the iterator lists */
+    g_list_free(descs);
+}
+
 void host_returnHandleHack(gint handle) {
     /* TODO replace this with something more graceful? */
-    if(worker_isAlive()) {
-        Host* host = worker_getActiveHost();
-        if(host) {
+    if (worker_isAlive()) {
+        Host *host = worker_getActiveHost();
+        if (host) {
             _host_returnPreviousDescriptorHandle(host, handle);
         }
     }

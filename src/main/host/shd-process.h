@@ -77,24 +77,31 @@ Process* process_new(gpointer host, guint processID,
         const gchar* pluginPath, const gchar* pluginSymbol, const gchar* preloadName,
         const gchar* preloadPath, gchar* arguments);
 void process_ref(Process* proc);
-void process_unref(Process* proc);
+void process_unref(Process *proc);
 
-void process_schedule(Process* proc, gpointer nothing);
-void process_continue(Process* proc);
-void process_stop(Process* proc);
+void process_schedule(Process *proc, gpointer nothing);
+
+void process_continue(Process *proc);
+
+void process_stop(Process *proc);
 
 struct ProcessMigrateArgs {
-    pthread_t* t1;
-    pthread_t* t2;
+    pthread_t *t1;
+    pthread_t *t2;
 };
-void process_migrate(Process* proc, gpointer threads);
 
-gboolean process_wantsNotify(Process* proc, gint epollfd);
-gboolean process_isRunning(Process* proc);
-gboolean process_shouldEmulate(Process* proc);
+void process_migrate(Process *proc, gpointer threads);
 
-gboolean process_addAtExitCallback(Process* proc, gpointer userCallback, gpointer userArgument,
-        gboolean shouldPassArgument);
+gboolean process_wantsNotify(Process *proc, gint epollfd);
+
+gboolean process_isRunning(Process *proc);
+
+gboolean process_shouldEmulate(Process *proc);
+
+gboolean process_addAtExitCallback(Process *proc, gpointer userCallback, gpointer userArgument,
+                                   gboolean shouldPassArgument);
+
+guint process_getProcessID(Process *proc);
 
 /*****************************************************************
  * Begin virtual process emulation of pthread and syscalls.
@@ -104,8 +111,9 @@ gboolean process_addAtExitCallback(Process* proc, gpointer userCallback, gpointe
 
 /* memory allocation family */
 
-void* process_emu_malloc(Process* proc, size_t size);
-void* process_emu_calloc(Process* proc, size_t nmemb, size_t size);
+void *process_emu_malloc(Process *proc, size_t size);
+
+void *process_emu_calloc(Process *proc, size_t nmemb, size_t size);
 void* process_emu_realloc(Process* proc, void *ptr, size_t size);
 void process_emu_free(Process* proc, void *ptr);
 int process_emu_posix_memalign(Process* proc, void** memptr, size_t alignment, size_t size);
