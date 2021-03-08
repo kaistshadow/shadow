@@ -55,5 +55,7 @@ void slave_addCommandToHostQueue(Slave* slave, gchar* hostName, gchar* id, Simul
 
 void slave_storeCounts(Slave* slave, ObjectCounter* objectCounter);
 void slave_countObject(ObjectType otype, CounterType ctype);
+// for BLEEP DDES
+RemoteEventProcessor* slave_getRemoteEventProcessor(Slave* slave);
 
 #endif /* SHD_SLAVE_H_ */

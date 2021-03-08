@@ -60,6 +60,9 @@ struct _Slave {
     gchar* dataPath;
     gchar* hostsPath;
 
+    // for BLEEP DDES
+    RemoteEventProcessor* remoteEventProcessor;
+
     MAGIC_DECLARE;
 };
 
@@ -196,6 +199,8 @@ Slave* slave_new(Master* master, Options* options, SimulationTime endTime, Simul
 
     /* now make sure the hosts path exists, as it may not have been in the template */
     g_mkdir_with_parents(slave->hostsPath, 0775);
+
+    slave->remoteEventProcessor = remoteEvent_new(8879, 8890);
 
     return slave;
 }
@@ -488,4 +493,10 @@ void slave_countObject(ObjectType otype, CounterType ctype) {
 SimulationTime slave_getBootstrapEndTime(Slave* slave) {
     MAGIC_ASSERT(slave);
     return slave->bootstrapEndTime;
+}
+
+// for BLEEP DDES
+RemoteEventProcessor* slave_getRemoteEventProcessor(Slave* slave) {
+    MAGIC_ASSERT(slave);
+    return slave->remoteEventProcessor;
 }

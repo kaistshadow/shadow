@@ -71,6 +71,9 @@ gboolean turn_off_tls_fix;
 #include "core/logger/shd-logger-helper.h"
 #include "core/logger/shd-logger.h"
 
+// BLEEP DDES
+#include "core/ddes/shd-ddes-mode.h"
+
 /* configuration, base runnables, and input parsing */
 #include "core/support/shd-object-counter.h"
 #include "core/support/shd-examples.h"
@@ -118,14 +121,13 @@ gboolean turn_off_tls_fix;
 // BLEEP IPC
 #include "ipc/ipc.h"
 
+// BLEEP DDES
+#include "core/ddes/shd-remote-event.h"
 
 #include "core/scheduler/shd-scheduler-policy.h"
 #include "core/scheduler/shd-scheduler.h"
 #include "core/shd-master.h"
 #include "core/shd-slave.h"
 #include "core/shd-worker.h"
-
-// BLEEP DDES
-#include "core/ddes/shd-ddes-mode.h"
 
 #endif /* SHADOW_H_ */

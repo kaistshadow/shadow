@@ -70,6 +70,7 @@ set(shadow_srcs
     core/work/shd-task.c
     core/work/shd-command.c
     core/ddes/shd-ddes-mode.c
+    core/ddes/shd-remote-event.c
     core/shd-main.c
     core/shd-master.c
     core/shd-slave.c
@@ -138,6 +139,8 @@ target_link_libraries(shadow shadow-interpose-helper vdl bleep_addon -lrpth -lzm
    ${IGRAPH_LIBRARIES} ${GLIB_LIBRARIES} shadow-remora)
 install(TARGETS shadow DESTINATION bin)
 
+add_executable(overmind core/ddes/overmind.c core/ddes/overmind_latch.c)
+target_link_libraries(overmind ${CMAKE_THREAD_LIBS_INIT} ${GLIB_LIBRARIES})
 
 ## shadow needs to find libshadow-interpose and custom libs after install
 set_target_properties(shadow PROPERTIES
