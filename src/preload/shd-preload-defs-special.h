@@ -69,8 +69,3 @@ PRELOADDEF(return, int, shadow_assign_virtual_id, (void));
 
 // Memory Instrumentation Marker Functions
 PRELOADDEF(return, void, shadow_instrumentation_marker_set, (int file_symbol, int line_cnt), file_symbol, line_cnt);
-
-//BLEEP TPS interface
-PRELOADDEF(return, void, update_log_map,(const char prevblockhash[], const char blockhash[],const int txcount, const int height),prevblockhash, blockhash, txcount, height);
-PRELOADDEF(return, int, get_tx_total_count,(void));
-PRELOADDEF(return, int, get_tx_count,(const char blockhash[]),blockhash);

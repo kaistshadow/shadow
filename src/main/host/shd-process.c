@@ -58,7 +58,6 @@
 
 //Added for C++ bleep addon module on Shadow
 #include "bleep_addon/bleep_addon.h"
-#include "bleep_addon/bitcoin_log_map/log_map.h"
 
 #include "dl.h"
 //Modified for BLEEP Response Port Error
@@ -8228,120 +8227,6 @@ void process_emu_shadow_instrumentation_marker_set(Process* proc, int file_symbo
 
 #undef PROCESS_EMU_UNSUPPORTED
 
-//hj add for storage hashtable
-#define MAX_NODE_CNT 2000
-#define MAX_DATAFILE_CNT 2000
-
-void createHashTables() {
-    FileInfotbl = (HashTable*)malloc(sizeof(HashTable));
-    FileInfotbl->ents = (HashTblEntry*)malloc(sizeof(HashTblEntry)*MAX_DATAFILE_CNT);
-    // initialize hash table entries
-    for(int i=0; i<MAX_DATAFILE_CNT; i++) {
-        FileInfotbl->ents[i].listcnt = 0;
-        FileInfotbl->ents[i].list = NULL;
-    }
-
-    NodeInfotbl = (HashNodeTable *)malloc(sizeof(HashNodeTable));
-    NodeInfotbl->ents = (HashNodeTblEntry*)malloc(sizeof(HashNodeTblEntry)*MAX_NODE_CNT);
-    // initialize hash node table entries
-    for(int i=0; i<MAX_NODE_CNT; i++) {
-        NodeInfotbl->ents[i].lastFileNo = 0;
-        NodeInfotbl->ents[i].list = NULL;
-    }
-}
-
-// AddHashData : [key]에 data 추가 -
-void AddHashData(HashTable *hashtable, int fileno, char* actual_path, char* lastBlockHash){
-
-    // list entry 생성
-    Hashlist* elem = (Hashlist*)malloc(sizeof(Hashlist));
-    elem->fileno = fileno;
-    elem->actual_path = actual_path;
-    elem->lastBlockHashMerkleRoot = (char*)malloc(sizeof(char)*32);
-    memcpy(elem->lastBlockHashMerkleRoot, lastBlockHash, 32);
-    elem->refCnt=0;
-
-    // put elem to list header
-    Hashlist* cursor = hashtable->ents[fileno].list;
-    hashtable->ents[fileno].list = elem;
-    elem->next = cursor;
-    elem->prev = NULL;
-    if (cursor)
-        cursor->prev = elem;
-
-    hashtable->ents[fileno].listcnt++;
-}
-
-void AddNodeHashData(HashNodeTable *hashNodeTable,unsigned int nodeid, int fileno,char* actual_path) {
-    // list entry 생성
-    HashNodelist* elem = (HashNodelist*)malloc(sizeof(HashNodelist));
-    elem->fileno = fileno;
-    elem->actual_path = actual_path;
-    elem->nodeID = nodeid;
-
-    // put elem to list header
-    HashNodelist* cursor = hashNodeTable->ents[nodeid].list;
-    hashNodeTable->ents[nodeid].list = elem;
-    elem->next = cursor;
-    elem->prev = NULL;
-    if (cursor)
-        cursor->prev = elem;
-
-    hashNodeTable->ents[nodeid].lastFileNo = fileno;
-}
-
-
-char* getLastBlockHash(HashTable *hashtable, int key){
-    unsigned char* res = FileInfotbl->ents[key].list->lastBlockHashMerkleRoot;
-    return res;
-}
-
-void DeleteHashData(HashTable *hashtable, int key, char* actual_path){
-
-    if(hashtable->ents[key].list == NULL) {
-        return;
-    }
-
-    Hashlist* delNode = NULL;
-    if(hashtable->ents[key].list->actual_path == actual_path){
-        delNode = &FileInfotbl->ents[key].list;
-        hashtable->ents[key].list = hashtable->ents->list->next;
-    }
-    else {
-        Hashlist *node = hashtable->ents[key].list;
-        Hashlist *next = node->next;
-
-        while (next) {
-            if (strcmp(next->actual_path ,actual_path) == 0) {
-                node->next = next->next;
-                delNode = next;
-                break;
-            }
-            node = next;
-            next = node->next;
-        }
-    }
-    free(delNode->lastBlockHashMerkleRoot);
-    free(delNode);
-}
-
-void DeleteNodeHashData(HashNodeTable *hashNodeTable,int key){
-    if(hashNodeTable->ents[key].list == NULL) {
-        return;
-    }
-    hashNodeTable->ents[key].lastFileNo=0;
-    free(hashNodeTable->ents[key].list);
-}
-
-void printHashTable(HashNodeTable *hashtable,int key){
-    printf("[hash table : %d]\n",key);
-    HashNodelist * node = hashtable->ents[key].list;
-    printf("print hash table : %s \n",node->actual_path);
-    while (node->next) {
-        node = node->next;
-        printf("print hash table : %s \n",node->actual_path);
-    }
-}
 
 // BLEEP ADDON
 void process_emu_shadow_bitcoin_register_hash(Process* proc, const char hash[]) {
@@ -8354,23 +8239,4 @@ int process_emu_shadow_bitcoin_check_hash(Process* proc, const char hash[]) {
     int ret = shadow_bitcoin_check_hash(hash);
     _process_changeContext(proc, PCTX_SHADOW, prevCTX);
     return ret;
-}
-
-void process_emu_update_log_map(Process* proc, const char prevblockhash[], const char blockhash[], const int txcount, const int height) {
-    ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
-    update_log_map(prevblockhash, blockhash, txcount, height);
-    _process_changeContext(proc, PCTX_SHADOW, prevCTX);
-}
-
-int process_emu_get_tx_total_count(Process* proc) {
-    ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
-    int res =  get_tx_total_count();
-    _process_changeContext(proc, PCTX_SHADOW, prevCTX);
-    return res;
-}
-int process_emu_get_tx_count(Process* proc, const char blockhash[]){
-    ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
-    int res = get_tx_count(blockhash);
-    _process_changeContext(proc, PCTX_SHADOW, prevCTX);
-    return res;
 }

@@ -123,7 +123,6 @@ install(TARGETS shadow-remora DESTINATION lib)
 ## attach BLEEP ADDON library module
 SET(BLEEP_ADDON_SRC
     bleep_addon/bleep_addon.cpp
-    bleep_addon/bitcoin_log_map/log_map.cpp
 )
 add_library(bleep_addon SHARED ${BLEEP_ADDON_SRC})
 install(TARGETS bleep_addon DESTINATION lib)
