@@ -484,6 +484,16 @@ int shadow_bind(int fd, const struct sockaddr* addr, socklen_t len) {
     }
 }
 
+int shadow_register_NIC(const struct sockaddr* addr, socklen_t len) {
+    Process* proc = NULL;
+    if((proc = _doEmulate()) != NULL) {
+        return process_emu_shadow_register_NIC(proc, addr, len);
+    } else {
+        ENSURE(shadow_claim_shared_entry);
+        return director.next.shadow_register_NIC(addr, len);
+    }
+}
+
 /* BLEEP related functions*/
 // BLEEP Shared Entry Functions
 void* shadow_claim_shared_entry(void* ptr, size_t sz, int shared_id) {
