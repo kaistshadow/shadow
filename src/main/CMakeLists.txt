@@ -41,7 +41,7 @@ add_cflags(-fPIC)
 #add_cflags(-Wno-unknown-warning-option)
 #add_cflags(-Wno-visibility)
 add_cflags(-std=gnu99)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} $ENV{CXXFLAGS} -std=c++11 -fPIC")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} $ENV{CXXFLAGS} -fPIC")
 
 if(SHADOW_PROFILE STREQUAL ON)
     message(STATUS "Building Shadow core with profiling support using '-pg'")
