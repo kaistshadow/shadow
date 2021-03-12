@@ -12,5 +12,5 @@ int remoteEvent_produce(RemoteEventProcessor* rep, SimulationTime deliverTime, G
 void remoteEvent_free(RemoteEventProcessor* rep);
 void remoteEvent_broadcastNextWindow(RemoteEventProcessor* rep, SimulationTime start, SimulationTime end);
 void remoteEvent_makeWindowConsensus(RemoteEventProcessor* rep, SimulationTime* startRef, SimulationTime* endRef);
-
+int remoteEvent_checkAssigned(RemoteEventProcessor* rep, GQuark id);
 #endif

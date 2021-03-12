@@ -396,3 +396,7 @@ void remoteEvent_free(RemoteEventProcessor* rep) {
     countdownlatch_free(rep->windowUpdated);
     g_free(rep);
 }
+
+int remoteEvent_checkAssigned(RemoteEventProcessor* rep, GQuark id) {
+    return id % rep->slave_count == rep->id;
+}
