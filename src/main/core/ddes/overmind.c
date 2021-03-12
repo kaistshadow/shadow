@@ -45,6 +45,7 @@ void* advent(void* arg) {
     // connect the client socket to server socket
     if (connect(fd, (struct sockaddr*)&server, sizeof(server)) != 0) {
         printf("Cannot connect to the socket\n");
+        close(fd);
         return NULL;
     }
 
@@ -69,6 +70,7 @@ void* advent(void* arg) {
     recv(fd, &res, 4, 0);
     if (res != 1) {
         printf("error occured in response\n");
+        close(fd);
         return NULL;
     }
 
@@ -93,7 +95,7 @@ void overmind_add_slave(overmind* o, const char* ip, int port) {
     si->port = port;
     o->slaves[si->slave_id] = si;
 }
-void overmind_clear(overmind* o) {
+void overmind_free(overmind* o) {
     int i;
     for (i=0; i<o->slave_count; i++) {
         free(o->slaves[i]);
@@ -119,14 +121,14 @@ void overmind_start(overmind* o) {
     countdownlatch_free(o->latch);
 }
 int main(int argc, char* argv[]) {
-    int slavePort = 8214;
+    int slavePort = 8879;
 
     overmind* o = (overmind*)malloc(sizeof(overmind));
 
     o->slaves = (slave_info**)malloc(sizeof(slave_info*) * 1);
-    overmind_add_slave(o, "127.0.0.1", slavePort);
+    overmind_add_slave(o, "127.0.0.1", 8879);
 
     overmind_start(o);
 
-    overmind_clear(o);
+    overmind_free(o);
 }

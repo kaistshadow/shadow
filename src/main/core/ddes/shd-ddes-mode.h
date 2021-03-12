@@ -9,7 +9,6 @@ typedef enum _DdesMode DdesMode;
 enum _DdesMode {
     DDES_UNSET,
     DDES_FULL,
-    DDES_MASTER,
     DDES_SLAVE,
 };
 

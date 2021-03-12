@@ -49,6 +49,9 @@ struct _PacketTCPHeader {
     SimulationTime timestampEcho;
 };
 
+int packet_serialize(Packet *packet, unsigned char** result);
+Packet* packet_deserialize(unsigned char* data);
+
 const gchar* protocol_toString(ProtocolType type);
 
 Packet* packet_new(gconstpointer payload, gsize payloadLength, guint hostID, guint64 packetID);

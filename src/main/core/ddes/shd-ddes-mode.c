@@ -8,8 +8,6 @@ const char* ddesmode_toStr(DdesMode mode) {
     switch (mode) {
         case DDES_FULL:
             return "full";
-        case DDES_MASTER:
-            return "master";
         case DDES_SLAVE:
             return "slave";
         case DDES_UNSET:
@@ -22,8 +20,6 @@ DdesMode ddesmode_fromStr(const char* ddesStr) {
         return DDES_UNSET;
     } else if (g_ascii_strcasecmp(ddesStr, "full") == 0) {
         return DDES_FULL;
-    } else if (g_ascii_strcasecmp(ddesStr, "master") == 0) {
-        return DDES_MASTER;
     } else if (g_ascii_strcasecmp(ddesStr, "slave") == 0) {
         return DDES_SLAVE;
     } else {

@@ -121,11 +121,10 @@ gboolean turn_off_tls_fix;
 // BLEEP IPC
 #include "ipc/ipc.h"
 
-// BLEEP DDES
-#include "core/ddes/shd-remote-event.h"
-
 #include "core/scheduler/shd-scheduler-policy.h"
 #include "core/scheduler/shd-scheduler.h"
+// BLEEP DDES
+#include "core/ddes/shd-remote-event.h"
 #include "core/shd-master.h"
 #include "core/shd-slave.h"
 #include "core/shd-worker.h"

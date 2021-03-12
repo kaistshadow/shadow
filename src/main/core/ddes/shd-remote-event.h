@@ -7,7 +7,10 @@
 
 typedef struct _RemoteEventProcessor RemoteEventProcessor;
 
-RemoteEventProcessor* remoteEvent_new(int masterRecvPort, int slavePort);
-void remoteEvent_produce(RemoteEventProcessor* rep, SimulationTime deliverTime, GQuark srcID, GQuark dstID, Packet* packet);
+RemoteEventProcessor* remoteEvent_new(Scheduler* scheduler, int masterRecvPort, int slavePort);
+int remoteEvent_produce(RemoteEventProcessor* rep, SimulationTime deliverTime, GQuark srcID, GQuark dstID, Packet* packet);
+void remoteEvent_free(RemoteEventProcessor* rep);
+void remoteEvent_broadcastNextWindow(RemoteEventProcessor* rep, SimulationTime start, SimulationTime end);
+void remoteEvent_makeWindowConsensus(RemoteEventProcessor* rep, SimulationTime* startRef, SimulationTime* endRef);
 
 #endif

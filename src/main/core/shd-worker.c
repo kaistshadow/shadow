@@ -266,22 +266,24 @@ void worker_sendPacket(Packet* packet) {
 
         packet_addDeliveryStatus(packet, PDS_INET_SENT);
 
-        /* the packetCopy starts with 1 ref, which will be held by the packet task
-         * and unreffed after the task is finished executing. */
-        Packet* packetCopy = packet_copy(packet);
-
         // BLEEP DDES
         if(options_getDdesMode(slave_getOptions(worker->slave)) == DDES_SLAVE) {
-            remoteEvent_produce(slave_getRemoteEventProcessor(worker->slave), deliverTime, host_getID(srcHost), dstID, packetCopy);
-            // BLEEP DDES remove below, if fully made.
-            Task* packetTask = task_new((TaskCallbackFunc)_worker_runDeliverPacketTask,
-                                        packetCopy, NULL, (TaskObjectFreeFunc)packet_unref, NULL);
-            Event* packetEvent = event_new_(packetTask, deliverTime, srcHost, dstHost);
-            task_unref(packetTask);
+            int inSlave = remoteEvent_produce(slave_getRemoteEventProcessor(worker->slave), deliverTime, host_getID(srcHost), dstID, packet);
+            if (inSlave) {
+                /* the packetCopy starts with 1 ref, which will be held by the packet task
+                 * and unreffed after the task is finished executing. */
+                Packet* packetCopy = packet_copy(packet);
+                Task* packetTask = task_new((TaskCallbackFunc)_worker_runDeliverPacketTask,
+                                            packetCopy, NULL, (TaskObjectFreeFunc)packet_unref, NULL);
+                Event* packetEvent = event_new_(packetTask, deliverTime, srcHost, dstHost);
+                task_unref(packetTask);
 
-            scheduler_push(worker->scheduler, packetEvent, srcHost, dstHost);
-            // BLEEP DDES remove up, if fully made.
+                scheduler_push(worker->scheduler, packetEvent, srcHost, dstHost);
+            }
         } else {
+            /* the packetCopy starts with 1 ref, which will be held by the packet task
+             * and unreffed after the task is finished executing. */
+            Packet* packetCopy = packet_copy(packet);
             Task* packetTask = task_new((TaskCallbackFunc)_worker_runDeliverPacketTask,
                                         packetCopy, NULL, (TaskObjectFreeFunc)packet_unref, NULL);
             Event* packetEvent = event_new_(packetTask, deliverTime, srcHost, dstHost);
@@ -444,17 +446,14 @@ gboolean worker_isBootstrapActive() {
 }
 
 // for BLEEP DDES #3
-void worker_processRemotePacket(Packet* packet, SimulationTime deliverTime, guint32 srcID, guint32 dstID) {
-    Worker* worker = _worker_getPrivate();
-    // BLEEP DDES uncomment below, if fully made.
-//    Task* packetTask = task_new((TaskCallbackFunc)_worker_runDeliverPacketTask,
-//                                packet, NULL, (TaskObjectFreeFunc)packet_unref, NULL);
-//    Event* packetEvent = event_new_(packetTask, deliverTime, srcHost, dstHost);
-//    task_unref(packetTask);
-//
+void worker_processRemotePacket(Scheduler* scheduler, Packet* packet, SimulationTime deliverTime, guint32 srcID, guint32 dstID) {
+    Task* packetTask = task_new((TaskCallbackFunc)_worker_runDeliverPacketTask,
+                                packet, NULL, (TaskObjectFreeFunc)packet_unref, NULL);
+    Host* srcHost = scheduler_getHost(scheduler, srcID);
+    Host* dstHost = scheduler_getHost(scheduler, dstID);
+    Event* packetEvent = event_new_(packetTask, deliverTime, srcHost, dstHost);
+    task_unref(packetTask);
 
-    // stub
-    printf("BLEEPDDES: remote packet arrived in %ld, src:%d, dst:%d\n", deliverTime, srcID, dstID);
     // BLEEP DDES uncomment below, if fully made.
-    //scheduler_push(worker->scheduler, packetEvent, srcHost, dstHost);
+    scheduler_push(scheduler, packetEvent, srcHost, dstHost);
 }

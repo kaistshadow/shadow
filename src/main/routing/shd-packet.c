@@ -51,6 +51,186 @@ struct _Packet {
     MAGIC_DECLARE;
 };
 
+// for BLEEP DDES
+guint64 memcpy_and_proceed(void* dest, void* src, size_t n) {
+    memcpy(dest, src, n);
+    return n;
+}
+// for BLEEP DDES
+// return allocated serial unsigned char array data, with serial data length
+int packet_serialize(Packet *packet, unsigned char** result) {
+    guint64 dataLen = 0;
+    dataLen += sizeof(guint);
+    dataLen += sizeof(guint64);
+    dataLen += sizeof(ProtocolType);
+    PacketTCPHeader* h;
+    switch(packet->protocol) {
+        case PLOCAL:
+            dataLen += sizeof(PacketLocalHeader);
+            break;
+        case PTCP:
+            h = (PacketTCPHeader*)(packet->header);
+            dataLen += sizeof(h->flags);
+            dataLen += sizeof(in_addr_t);
+            dataLen += sizeof(in_port_t);
+            dataLen += sizeof(in_addr_t);
+            dataLen += sizeof(in_port_t);
+            dataLen += sizeof(guint);
+            dataLen += sizeof(guint);
+            GList *iter = h->selectiveACKs;
+            guint sACKLength = g_list_length(iter);
+            dataLen += sizeof(guint);
+            dataLen += sACKLength * sizeof(gint);
+            dataLen += sizeof(guint);
+            dataLen += sizeof(SimulationTime);
+            dataLen += sizeof(SimulationTime);
+            break;
+        case PUDP:
+            dataLen += sizeof(PacketUDPHeader);
+            break;
+        default:
+            // for PNONE, just do not copy header data
+            break;
+    }
+    // #1 for receiving part, record payload length first
+    gsize copyLength = packet_getPayloadLength(packet);
+    dataLen += sizeof(gsize);
+    // #1 end
+    dataLen += copyLength;
+    dataLen += sizeof(double);
+    dataLen += sizeof(PacketDeliveryStatusFlags);
+
+    guint statusLength = g_queue_get_length(packet->orderedStatus);
+    dataLen += sizeof(guint);
+    dataLen += statusLength * sizeof(PacketDeliveryStatusFlags);
+
+    unsigned char* data = (unsigned char*)malloc(sizeof(unsigned char) * dataLen);
+
+    guint64 idx = 0;
+    idx += memcpy_and_proceed(&data[idx], &packet->hostID, sizeof(guint));
+    idx += memcpy_and_proceed(&data[idx], &packet->packetID, sizeof(guint64));
+    idx += memcpy_and_proceed(&data[idx], &packet->protocol, sizeof(ProtocolType));
+    switch(packet->protocol) {
+        case PLOCAL:
+            idx += memcpy_and_proceed(&data[idx], packet->header, sizeof(PacketLocalHeader));
+            break;
+        case PTCP:
+            idx += memcpy_and_proceed(&data[idx], &h->flags, sizeof(h->flags));
+            idx += memcpy_and_proceed(&data[idx], &h->sourceIP, sizeof(in_addr_t));
+            idx += memcpy_and_proceed(&data[idx], &h->sourcePort, sizeof(in_port_t));
+            idx += memcpy_and_proceed(&data[idx], &h->destinationIP, sizeof(in_addr_t));
+            idx += memcpy_and_proceed(&data[idx], &h->destinationPort, sizeof(in_port_t));
+            idx += memcpy_and_proceed(&data[idx], &h->sequence, sizeof(guint));
+            idx += memcpy_and_proceed(&data[idx], &h->acknowledgment, sizeof(guint));
+            GList *iter = h->selectiveACKs;
+            guint sACKLength = g_list_length(iter);
+            idx += memcpy_and_proceed(&data[idx], &sACKLength, sizeof(guint));
+            if (sACKLength != 0) {
+                while(iter) {
+                    gint sackSequence = GPOINTER_TO_INT(iter->data);
+                    idx += memcpy_and_proceed(&data[idx], &sackSequence, sizeof(gint));
+                    iter = g_list_next(iter);
+                }
+            }
+            idx += memcpy_and_proceed(&data[idx], &h->window, sizeof(guint));
+            idx += memcpy_and_proceed(&data[idx], &h->timestampValue, sizeof(SimulationTime));
+            idx += memcpy_and_proceed(&data[idx], &h->timestampEcho, sizeof(SimulationTime));
+            break;
+        case PUDP:
+            idx += memcpy_and_proceed(&data[idx], packet->header, sizeof(PacketUDPHeader));
+            break;
+        default:
+            // for PNONE, just do not copy header data
+            break;
+    }
+    idx += memcpy_and_proceed(&data[idx], &copyLength, sizeof(gsize));
+    if (copyLength != 0) {
+        idx += packet_copyPayload(packet, 0, &data[idx], copyLength);
+    }
+    idx += memcpy_and_proceed(&data[idx], &packet->priority, sizeof(double));
+    idx += memcpy_and_proceed(&data[idx], &packet->allStatus, sizeof(PacketDeliveryStatusFlags));
+
+    idx += memcpy_and_proceed(&data[idx], &statusLength, sizeof(guint));
+    for(int i = 0; i < statusLength; i++) {
+        gpointer statusPtr = g_queue_pop_head(packet->orderedStatus);
+        PacketDeliveryStatusFlags status = (PacketDeliveryStatusFlags) GPOINTER_TO_UINT(statusPtr);
+        idx += memcpy_and_proceed(&data[idx], &status, sizeof(PacketDeliveryStatusFlags));
+        g_queue_push_tail(packet->orderedStatus, statusPtr);
+    }
+
+    *result = data;
+
+    return idx;
+}
+// for BLEEP DDES
+Packet* packet_deserialize(unsigned char* data) {
+    Packet* packet = g_new0(Packet, 1);
+    MAGIC_INIT(packet);
+
+    packet->referenceCount = 1;
+
+    guint64 idx = 0;
+    idx += memcpy_and_proceed(&packet->hostID, &data[idx], sizeof(guint));
+    idx += memcpy_and_proceed(&packet->packetID, &data[idx], sizeof(guint64));
+    idx += memcpy_and_proceed(&packet->protocol, &data[idx], sizeof(ProtocolType));
+    PacketTCPHeader* h;
+    switch(packet->protocol) {
+        case PLOCAL:
+            packet->header = g_new0(PacketLocalHeader, 1);
+            idx += memcpy_and_proceed(packet->header, &data[idx], sizeof(PacketLocalHeader));
+            break;
+        case PTCP:
+            packet->header = g_new0(PacketTCPHeader, 1);
+            h = (PacketTCPHeader*)(packet->header);
+            idx += memcpy_and_proceed(&h->flags, &data[idx], sizeof(h->flags));
+            idx += memcpy_and_proceed(&h->sourceIP, &data[idx], sizeof(in_addr_t));
+            idx += memcpy_and_proceed(&h->sourcePort, &data[idx], sizeof(in_port_t));
+            idx += memcpy_and_proceed(&h->destinationIP, &data[idx], sizeof(in_addr_t));
+            idx += memcpy_and_proceed(&h->destinationPort, &data[idx], sizeof(in_port_t));
+            idx += memcpy_and_proceed(&h->sequence, &data[idx], sizeof(guint));
+            idx += memcpy_and_proceed(&h->acknowledgment, &data[idx], sizeof(guint));
+            guint sACKLength = 0;
+            idx += memcpy_and_proceed(&sACKLength, &data[idx], sizeof(guint));
+            for (int i=0; i<sACKLength; i++) {
+                gint sACKSequence;
+                idx += memcpy_and_proceed(&sACKSequence, &data[idx], sizeof(gint));
+                h->selectiveACKs = g_list_append(h->selectiveACKs, GINT_TO_POINTER(sACKSequence));
+            }
+            idx += memcpy_and_proceed(&h->window, &data[idx], sizeof(guint));
+            idx += memcpy_and_proceed(&h->timestampValue, &data[idx], sizeof(SimulationTime));
+            idx += memcpy_and_proceed(&h->timestampEcho, &data[idx], sizeof(SimulationTime));
+            break;
+        case PUDP:
+            packet->header = g_new0(PacketUDPHeader, 1);
+            idx += memcpy_and_proceed(packet->header, &data[idx], sizeof(PacketUDPHeader));
+            break;
+        default:
+            // for PNONE, just do not copy header data
+            packet->header = NULL;
+            break;
+    }
+    gsize copyLength = 0;
+    idx += memcpy_and_proceed(&copyLength, &data[idx], sizeof(gsize));
+    if (copyLength != 0) {
+        unsigned char* payload = (unsigned char*)malloc(sizeof(unsigned char) * copyLength);
+        idx += memcpy_and_proceed(payload, &data[idx], copyLength);
+        packet->payload = payload_new(payload, copyLength);
+    }
+    idx += memcpy_and_proceed(&packet->priority, &data[idx], sizeof(double));
+    idx += memcpy_and_proceed(&packet->allStatus, &data[idx], sizeof(PacketDeliveryStatusFlags));
+
+    guint statusLength;
+    idx += memcpy_and_proceed(&statusLength, &data[idx], sizeof(guint));
+    packet->orderedStatus = g_queue_new();
+    for(int i=0; i<statusLength; i++) {
+        PacketDeliveryStatusFlags status;
+        idx += memcpy_and_proceed(&status, &data[idx], sizeof(PacketDeliveryStatusFlags));
+        g_queue_push_tail(packet->orderedStatus, GUINT_TO_POINTER(status));
+    }
+
+    return packet;
+}
+
 const gchar* protocol_toString(ProtocolType type) {
     switch (type) {
         case PLOCAL: return "LOCAL";

@@ -58,6 +58,6 @@ Address* worker_resolveIPToAddress(in_addr_t ip);
 Address* worker_resolveNameToAddress(const gchar* name);
 
 // for BLEEP DDES #3
-void worker_processRemotePacket(Packet* packet, SimulationTime deliverTime, guint32 srcID, guint32 dstID);
+void worker_processRemotePacket(Scheduler* scheduler, Packet* packet, SimulationTime deliverTime, guint32 srcID, guint32 dstID);
 
 #endif /* SHD_WORKER_H_ */

@@ -98,7 +98,7 @@ Options* options_new(gint argc, gchar* argv[]) {
       { "valgrind", 'x', 0, G_OPTION_ARG_NONE, &(options->runValgrind), "Run through valgrind for debugging", NULL },
       { "version", 'v', 0, G_OPTION_ARG_NONE, &(options->printSoftwareVersion), "Print software version and exit", NULL },
       { "turn_off_tls_fix", 'f', 0, G_OPTION_ARG_INT, &(options->turn_off_tls_fix), "Turn on/off tlx-fix mechanism. 1 to turn off and 0 to turn on. [1])", "N"},
-      { "ddes_mode", 'm', 0, G_OPTION_ARG_STRING, &(options->ddes_mode), "Distributed system setting for shadow ('full','master','slave') ['full']", "MODE"},
+      { "ddes_mode", 'm', 0, G_OPTION_ARG_STRING, &(options->ddes_mode), "Distributed system setting for shadow ('full','slave') ['full']", "MODE"},
       { NULL },
     };
 

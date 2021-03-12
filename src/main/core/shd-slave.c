@@ -200,7 +200,12 @@ Slave* slave_new(Master* master, Options* options, SimulationTime endTime, Simul
     /* now make sure the hosts path exists, as it may not have been in the template */
     g_mkdir_with_parents(slave->hostsPath, 0775);
 
-    slave->remoteEventProcessor = remoteEvent_new(8879, 8890);
+    if(options_getDdesMode(slave->options) == DDES_SLAVE) {
+        slave->remoteEventProcessor = remoteEvent_new(slave->scheduler, 8879, 8890);
+    }
+    else {
+        slave->remoteEventProcessor = NULL;
+    }
 
     return slave;
 }
@@ -208,6 +213,10 @@ Slave* slave_new(Master* master, Options* options, SimulationTime endTime, Simul
 gint slave_free(Slave* slave) {
     MAGIC_ASSERT(slave);
     gint returnCode = (slave->numPluginErrors > 0) ? -1 : 0;
+
+    // for BLEEP DDES
+    if (options_getDdesMode(slave->options) == DDES_SLAVE)
+        remoteEvent_free(slave->remoteEventProcessor);
 
     /* we will never execute inside the plugin again */
     slave->forceShadowContext = TRUE;
@@ -429,6 +438,12 @@ void slave_run(Slave* slave) {
         scheduler_start(slave->scheduler);
 
         while(keepRunning) {
+            // for BLEEP DDES, get smallest window start and window end
+            if (options_getDdesMode(slave->options) == DDES_SLAVE) {
+                remoteEvent_broadcastNextWindow(slave->remoteEventProcessor, windowStart, windowEnd);
+                remoteEvent_makeWindowConsensus(slave->remoteEventProcessor, &windowStart, &windowEnd);
+            }
+
             /* release the workers and run next round */
             scheduler_continueNextRound(slave->scheduler, windowStart, windowEnd);
 
