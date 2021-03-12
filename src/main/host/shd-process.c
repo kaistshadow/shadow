@@ -2218,10 +2218,13 @@ int process_emu_epoll_wait(Process* proc, int epfd, struct epoll_event *events, 
         utility_assert(proc->tstate == pth_gctx_get());
         ret = pth_epoll_wait(epfd, events, maxevents, timeout);
         _process_changeContext(proc, PCTX_PTH, PCTX_SHADOW);
+        _process_changeContext(proc, PCTX_SHADOW, PCTX_PLUGIN);
+        usleep(100000);  //0.1초
+        _process_changeContext(proc, PCTX_PLUGIN, PCTX_SHADOW);
         if (turn_off_tls_fix == 0) {
             copy_tls(proc, &thread, 0);
         }
-        if(ret == -1) {
+        if (ret == -1) {
             _process_setErrno(proc, errno);
         }
     } else {
