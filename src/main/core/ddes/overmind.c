@@ -22,6 +22,7 @@ struct _slave_info {
 struct _overmind {
     slave_info** slaves;
     int slave_count;
+    CountDownLatch* slave_receiver_ready_latch;
     CountDownLatch* latch;
 };
 
@@ -65,8 +66,25 @@ void* advent(void* arg) {
         send(fd, si->o->slaves[i]->ip, sLen, 0);
     }
 
+    // slave receiver ready
     // receive response
     int res = 0;
+    recv(fd, &res, 4, 0);
+    if (res != 1) {
+        printf("error occured in response\n");
+        close(fd);
+        return NULL;
+    }
+
+    // good to go
+    countdownlatch_countDownAwait(si->o->slave_receiver_ready_latch);
+
+    // all threads are good to go, then send good to go message
+    int req = 1;
+    send(fd, &req, 4, 0);
+
+    // receive response
+    res = 0;
     recv(fd, &res, 4, 0);
     if (res != 1) {
         printf("error occured in response\n");
@@ -78,7 +96,7 @@ void* advent(void* arg) {
     countdownlatch_countDownAwait(si->o->latch);
 
     // all threads are good to go, then send good to go message
-    int req = 1;
+    req = 1;
     send(fd, &req, 4, 0);
 
     close(fd);
@@ -106,6 +124,7 @@ void overmind_free(overmind* o) {
 void overmind_start(overmind* o) {
     int i;
     // set countdown latch
+    o->slave_receiver_ready_latch = countdownlatch_new(o->slave_count);
     o->latch = countdownlatch_new(o->slave_count);
 
     pthread_t* threads = (pthread_t*)malloc(sizeof(pthread_t) * o->slave_count);
@@ -118,6 +137,7 @@ void overmind_start(overmind* o) {
     for (i = 0; i<o->slave_count; i++) {
         pthread_join(threads[i], NULL);
     }
+    countdownlatch_free(o->slave_receiver_ready_latch);
     countdownlatch_free(o->latch);
 }
 int main(int argc, char* argv[]) {
@@ -127,6 +147,7 @@ int main(int argc, char* argv[]) {
 
     o->slaves = (slave_info**)malloc(sizeof(slave_info*) * 1);
     overmind_add_slave(o, "127.0.0.1", 8879);
+    overmind_add_slave(o, "143.248.36.118", 8879);
 
     overmind_start(o);
 

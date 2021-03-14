@@ -294,6 +294,11 @@ int _remoteEvent_receiver_setup(RemoteEventProcessor* rep) {
     rep->windowLatch = countdownlatch_new(rep->slave_count + 1);
     rep->windowUpdated = countdownlatch_new(rep->slave_count + 1);
 
+    int slave_receiver_ready = 1;
+    send(client_socket, &slave_receiver_ready, 4, 0);
+    int slave_receiver_ready_resp = 0;
+    recv(client_socket, &slave_receiver_ready_resp, 4, 0);
+
     while(idx < rep->slave_count) {
         int sLen = -1;
         char ipbuf[20];
