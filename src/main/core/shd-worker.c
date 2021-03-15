@@ -202,7 +202,7 @@ gboolean worker_scheduleTask(Task* task, SimulationTime nanoDelay) {
         Host* dstHost = srcHost;
         // for BLEEP DDES
         RemoteEventProcessor* rep = slave_getRemoteEventProcessor(worker->slave);
-        if (remoteEvent_checkAssigned(rep, host_getID(dstHost)) == 0) {
+        if (!rep || remoteEvent_checkAssigned(rep, host_getID(dstHost))) {
             Event* event = event_new_(task, worker->clock.now + nanoDelay, srcHost, dstHost);
             return scheduler_push(worker->scheduler, event, srcHost, dstHost);
         } else {

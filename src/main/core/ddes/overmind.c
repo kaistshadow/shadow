@@ -60,11 +60,6 @@ void* advent(void* arg) {
     send(fd, &(si->slave_id), 4, 0);
     int slave_count = si->o->slave_count;
     send(fd, &slave_count, 4, 0);
-    for (int i=0; i<slave_count; i++) {
-        int sLen = strlen(si->o->slaves[i]->ip);
-        send(fd, &sLen, 4, 0);
-        send(fd, si->o->slaves[i]->ip, sLen, 0);
-    }
 
     // slave receiver ready
     // receive response
@@ -75,13 +70,17 @@ void* advent(void* arg) {
         close(fd);
         return NULL;
     }
-
     // good to go
     countdownlatch_countDownAwait(si->o->slave_receiver_ready_latch);
-
     // all threads are good to go, then send good to go message
     int req = 1;
     send(fd, &req, 4, 0);
+
+    for (int i=0; i<slave_count; i++) {
+        int sLen = strlen(si->o->slaves[i]->ip);
+        send(fd, &sLen, 4, 0);
+        send(fd, si->o->slaves[i]->ip, sLen, 0);
+    }
 
     // receive response
     res = 0;
@@ -147,7 +146,6 @@ int main(int argc, char* argv[]) {
 
     o->slaves = (slave_info**)malloc(sizeof(slave_info*) * 1);
     overmind_add_slave(o, "127.0.0.1", 8879);
-    overmind_add_slave(o, "143.248.36.118", 8879);
 
     overmind_start(o);
 
