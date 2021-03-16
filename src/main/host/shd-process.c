@@ -2850,10 +2850,12 @@ int process_emu_setsockopt(Process* proc, int fd, int level, int optname, const 
                 }
             }
         } else if (level == IPPROTO_IP) {
-            if(optname == IP_TOS) {
+            // added for monero emulation.
+            // TODO : needed to be justified and re-implemented
+            // it is also related to the shadow issue #316
+            if (optname == IP_TOS) {
                 result = setsockopt(fd, level, optname, optval, optlen);
-            }
-            else {
+            } else {
                 warning("setsockopt IPPROTO_IP option %i not implemented", level);
                 _process_setErrno(proc, ENOSYS);
                 result = -1;
