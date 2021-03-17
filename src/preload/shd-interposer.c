@@ -546,4 +546,23 @@ void shadow_instrumentation_marker_set(int file_symbol, int line_cnt) {
     }
 }
 
+//Bitcoin coinflip validation Functions
+void shadow_bitcoin_register_hash(const char hash[]) {
+  Process* proc = NULL;
+  if((proc = _doEmulate()) != NULL) {
+    return process_emu_shadow_bitcoin_register_hash(proc,hash);
+  } else {
+    ENSURE(shadow_bitcoin_register_hash);
+    return director.next.shadow_bitcoin_register_hash(hash);
+  }
+}
+int shadow_bitcoin_check_hash(const char hash[]) {
+  Process* proc = NULL;
+  if((proc = _doEmulate()) != NULL) {
+    return process_emu_shadow_bitcoin_check_hash(proc,hash);
+  } else {
+    ENSURE(shadow_bitcoin_check_hash);
+    return director.next.shadow_bitcoin_check_hash(hash);
+  }
+}
 

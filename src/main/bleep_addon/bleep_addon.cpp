@@ -17,8 +17,10 @@ void shadow_bitcoin_register_hash(const char hash[]) {
     return;
 }
 int shadow_bitcoin_check_hash(const char hash[]) {
+  _bitcoin_coinflip_validation_table_m.lock();
     std::unordered_set<std::string>::const_iterator got = _bitcoin_coinflip_validation_table.find(hash);
     int res = (got != _bitcoin_coinflip_validation_table.end());
+  _bitcoin_coinflip_validation_table_m.unlock();
     return res;
 }
 
