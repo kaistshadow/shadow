@@ -998,9 +998,15 @@ static void _process_executeCleanup(Process* proc) {
     while(g_hash_table_iter_next(&iter, &key, &value)) {
         pth_t auxThread = key;
         if(auxThread) {
+            if (turn_off_tls_fix == 0) {
+                copy_tls(proc, &auxThread, 1);
+            }
             _process_changeContext(proc, PCTX_SHADOW, PCTX_PTH);
             gint success = pth_abort(auxThread);
             _process_changeContext(proc, PCTX_PTH, PCTX_SHADOW);
+            if (turn_off_tls_fix == 0) {
+                copy_tls(proc, &auxThread, 0);
+            }
         }
     }
     g_hash_table_remove_all(proc->programAuxThreads);
@@ -2218,10 +2224,13 @@ int process_emu_epoll_wait(Process* proc, int epfd, struct epoll_event *events, 
         utility_assert(proc->tstate == pth_gctx_get());
         ret = pth_epoll_wait(epfd, events, maxevents, timeout);
         _process_changeContext(proc, PCTX_PTH, PCTX_SHADOW);
+        _process_changeContext(proc, PCTX_SHADOW, PCTX_PLUGIN);
+        usleep(100000);  //0.1초
+        _process_changeContext(proc, PCTX_PLUGIN, PCTX_SHADOW);
         if (turn_off_tls_fix == 0) {
             copy_tls(proc, &thread, 0);
         }
-        if(ret == -1) {
+        if (ret == -1) {
             _process_setErrno(proc, errno);
         }
     } else {
@@ -2479,13 +2488,69 @@ ssize_t process_emu_sendto(Process* proc, int fd, const void *buf, size_t n, int
     return ret;
 }
 
-ssize_t process_emu_sendmsg(Process* proc, int fd, const struct msghdr *message, int flags) {
-    /* TODO implement */
-    ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
-    warning("sendmsg not implemented");
-    _process_setErrno(proc, ENOSYS);
+ssize_t process_emu_sendmsg(Process *proc, int fd, const struct msghdr *message, int flags)
+{
+   ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
+   gssize ret = 0;
+
+    if(!host_isShadowDescriptor(proc->host, fd)){
+        gint osfd = host_getOSHandle(proc->host, fd);
+        if (osfd >= 0) {
+            ret = sendmsg(osfd, message, flags);
+            if(ret < 0) {
+                _process_setErrno(proc, errno);
+            }
+        } else {
+            _process_setErrno(proc, EBADF);
+            ret = -1;
+        }
+    } else if(prevCTX == PCTX_PLUGIN) {
+        _process_changeContext(proc, PCTX_SHADOW, PCTX_PTH);
+        utility_assert(proc->tstate == pth_gctx_get());
+        ret = pth_sendmsg(fd, message, flags);
+        _process_changeContext(proc, PCTX_PTH, PCTX_SHADOW);
+        if(ret == -1) {
+            _process_setErrno(proc, errno);
+        }
+    } else {
+        if(message->msg_iovlen < 0 || message->msg_iovlen > IOV_MAX) {
+            _process_setErrno(proc, EINVAL);
+            ret = -1;
+        } else {
+            /* figure out how much they want to write total */
+            int i = 0;
+            size_t totalIOLength = 0;
+            for(i = 0; i < message->msg_iovlen; i++) {
+                totalIOLength += message->msg_iov[i].iov_len;
+            }
+
+            if(totalIOLength == 0) {
+                ret = 0;
+            } else {
+                /* get a temporary buffer and write to it */
+                void* tempBuffer = g_malloc0(totalIOLength);
+                size_t bytesCopied = 0;
+                for(i = 0; i < message->msg_iovlen; i++) {
+                    g_memmove(tempBuffer+bytesCopied, message->msg_iov[i].iov_base, message->msg_iov[i].iov_len);
+                    bytesCopied += message->msg_iov[i].iov_len;
+                }
+
+                ssize_t totalBytesWritten = 0;
+                if(bytesCopied > 0) {
+                    /* try to write all of the bytes we got from the iov buffers */
+                    _process_changeContext(proc, PCTX_SHADOW, prevCTX);
+                    totalBytesWritten = process_emu_write(proc, fd, tempBuffer, bytesCopied);
+                    _process_changeContext(proc, prevCTX, PCTX_SHADOW);
+                }
+
+                g_free(tempBuffer);
+                ret = totalBytesWritten;
+            }
+        }
+    }
+
     _process_changeContext(proc, PCTX_SHADOW, prevCTX);
-    return -1;
+    return ret;
 }
 
 ssize_t process_emu_recv(Process* proc, int fd, void *buf, size_t n, int flags) {
@@ -2524,13 +2589,84 @@ ssize_t process_emu_recvfrom(Process* proc, int fd, void *buf, size_t n, int fla
     return ret;
 }
 
-ssize_t process_emu_recvmsg(Process* proc, int fd, struct msghdr *message, int flags) {
-    /* TODO implement */
+ssize_t process_emu_recvmsg(Process *proc, int fd, struct msghdr *message, int flags)
+{
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
-    warning("recvmsg not implemented");
-    _process_setErrno(proc, ENOSYS);
+    gssize ret = 0;
+    if (!host_isShadowDescriptor(proc->host, fd))
+    {
+        gint osfd = host_getOSHandle(proc->host, fd);
+        if (osfd >= 0)
+        {
+            ret = recvmsg(osfd, message, flags);
+            if (ret < 0)
+            {
+                _process_setErrno(proc, errno);
+            }
+        }
+        else
+        {
+            _process_setErrno(proc, EBADF);
+            ret = -1;
+        }
+    }
+    else if (prevCTX == PCTX_PLUGIN)
+    {
+        _process_changeContext(proc, PCTX_SHADOW, PCTX_PTH);
+        utility_assert(proc->tstate == pth_gctx_get());
+        ret = pth_recvmsg(fd, message, flags);
+        _process_changeContext(proc, PCTX_PTH, PCTX_SHADOW);
+        if (ret == -1)
+        {
+            _process_setErrno(proc, errno);
+        }
+    }
+    else
+    {
+        if (message->msg_iovlen < 0 || message->msg_iovlen > IOV_MAX)
+        {
+            _process_setErrno(proc, EINVAL);
+            ret = -1;
+        }
+        else
+        {
+            /* figure out how much they want to read total */
+            int i = 0;
+            size_t totalIOLength = 0;
+            for (i = 0; i < message->msg_iovlen; i++)
+            {
+                totalIOLength +=  message->msg_iov[i].iov_len;
+            }
+            if (totalIOLength == 0)
+            {
+                ret = 0;
+            }
+            else
+            {
+                /* get a temporary buffer and read to it */
+                void *tempBuffer = g_malloc0(totalIOLength);
+                _process_changeContext(proc, PCTX_SHADOW, prevCTX);
+                ssize_t totalBytesRead = process_emu_read(proc, fd, tempBuffer, totalIOLength);
+                _process_changeContext(proc, prevCTX, PCTX_SHADOW);
+                if (totalBytesRead > 0)
+                {
+                    /* place all of the bytes we read in the iov buffers */
+                    size_t bytesCopied = 0;
+                    for (i = 0; i < message->msg_iovlen; i++)
+                    {
+                        size_t bytesRemaining = (size_t)(totalBytesRead - bytesCopied);
+                        size_t bytesToCopy = MIN(bytesRemaining, message->msg_iov[i].iov_len);
+                        g_memmove(message->msg_iov[i].iov_base, tempBuffer + bytesCopied, bytesToCopy);
+                        bytesCopied += bytesToCopy;
+                    }
+                }
+                g_free(tempBuffer);
+                ret = totalBytesRead;
+            }
+        }
+    }
     _process_changeContext(proc, PCTX_SHADOW, prevCTX);
-    return -1;
+    return ret;
 }
 
 int process_emu_getsockopt(Process* proc, int fd, int level, int optname, void* optval, socklen_t* optlen) {
@@ -2719,6 +2855,19 @@ int process_emu_setsockopt(Process* proc, int fd, int level, int optname, const 
                     break;
                 }
             }
+        } else if (level == IPPROTO_IP) {
+            // added for monero emulation.
+            // TODO : needed to be justified and re-implemented
+            // it is also related to the shadow issue #316
+            if (optname == IP_TOS) {
+                result = setsockopt(fd, level, optname, optval, optlen);
+            } else {
+                warning("setsockopt IPPROTO_IP option %i not implemented", level);
+                _process_setErrno(proc, ENOSYS);
+                result = -1;
+            }
+        } else if (level == IPPROTO_TCP) {
+            result = setsockopt(fd, level, optname, optval, optlen);
         } else {
             warning("setsockopt level %i not implemented", level);
             _process_setErrno(proc, ENOSYS);
