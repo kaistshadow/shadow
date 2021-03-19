@@ -8290,3 +8290,8 @@ int process_emu_shadow_bitcoin_check_hash(Process* proc, const char hash[]) {
     _process_changeContext(proc, PCTX_SHADOW, prevCTX);
     return ret;
 }
+void process_emu_shadow_bitcoin_load_hash(Process* proc) {
+    ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
+    shadow_bitcoin_load_hash();
+    _process_changeContext(proc, PCTX_SHADOW, prevCTX);
+}

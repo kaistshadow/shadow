@@ -74,3 +74,4 @@ PRELOADDEF(return, void, shadow_instrumentation_marker_set, (int file_symbol, in
 //BLEEP ADDON - coinflip validation
 PRELOADDEF(return, void, shadow_bitcoin_register_hash,(const char hash[]), hash);
 PRELOADDEF(return, int, shadow_bitcoin_check_hash,(const char hash[]), hash);
+PRELOADDEF(return, void, shadow_bitcoin_load_hash,(void));

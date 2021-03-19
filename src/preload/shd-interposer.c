@@ -566,3 +566,13 @@ int shadow_bitcoin_check_hash(const char hash[]) {
   }
 }
 
+void shadow_bitcoin_load_hash() {
+  Process* proc = NULL;
+  if((proc = _doEmulate()) != NULL) {
+    return process_emu_shadow_bitcoin_load_hash(proc);
+  } else {
+    ENSURE(shadow_bitcoin_load_hash);
+    return director.next.shadow_bitcoin_load_hash();
+  }
+}
+

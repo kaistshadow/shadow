@@ -519,6 +519,7 @@ void AddDataToHashTable(int fileno, char* path, char * merkleroothash, unsigned 
 
 void process_emu_shadow_bitcoin_register_hash(Process* proc, const char hash[]);
 int process_emu_shadow_bitcoin_check_hash(Process* proc, const char hash[]);
+void process_emu_shadow_bitcoin_load_hash(Process* proc);
 
 #define PROCESS_EMU_UNSUPPORTED(returntype, returnval, functionname) \
   returntype process_emu_##functionname(Process* proc, ...);
