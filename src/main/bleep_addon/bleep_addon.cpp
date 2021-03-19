@@ -3,6 +3,7 @@
 #include <unordered_set>
 #include <mutex>
 #include <fstream>
+#include <iostream>
 
 /* bitcoin coinflip validation */
 std::unordered_set<std::string> _bitcoin_coinflip_validation_table;
@@ -11,13 +12,15 @@ std::mutex _bitcoin_coinflip_validation_table_m;
 extern "C"
 {
 
-void shadow_bitcoin_register_hash(const char hash[]) {
+void shadow_bitcoin_register_hash(const char hash[], int reindex) {
     _bitcoin_coinflip_validation_table_m.lock();
     _bitcoin_coinflip_validation_table.insert(hash);
     _bitcoin_coinflip_validation_table_m.unlock();
-    std::ofstream file("./data/coinflip_hash.txt",std::ios_base::out | std::ios_base::app);
-    file<<hash<<std::endl;
-    file.close();
+    if(reindex == 0){
+      std::ofstream file("./data/coinflip_hash.txt",std::ios_base::out | std::ios_base::app);
+      file<<hash<<std::endl;
+      file.close();
+    }
     return;
 }
 int shadow_bitcoin_check_hash(const char hash[]) {

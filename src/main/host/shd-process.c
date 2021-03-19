@@ -8279,9 +8279,9 @@ void process_emu_shadow_instrumentation_marker_set(Process* proc, int file_symbo
 
 
 // BLEEP ADDON
-void process_emu_shadow_bitcoin_register_hash(Process* proc, const char hash[]) {
+void process_emu_shadow_bitcoin_register_hash(Process* proc, const char hash[], int reindex) {
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
-    shadow_bitcoin_register_hash(hash);
+    shadow_bitcoin_register_hash(hash,reindex);
     _process_changeContext(proc, PCTX_SHADOW, prevCTX);
 }
 int process_emu_shadow_bitcoin_check_hash(Process* proc, const char hash[]) {
