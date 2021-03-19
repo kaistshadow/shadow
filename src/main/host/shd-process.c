@@ -998,9 +998,15 @@ static void _process_executeCleanup(Process* proc) {
     while(g_hash_table_iter_next(&iter, &key, &value)) {
         pth_t auxThread = key;
         if(auxThread) {
+            if (turn_off_tls_fix == 0) {
+                copy_tls(proc, &auxThread, 1);
+            }
             _process_changeContext(proc, PCTX_SHADOW, PCTX_PTH);
             gint success = pth_abort(auxThread);
             _process_changeContext(proc, PCTX_PTH, PCTX_SHADOW);
+            if (turn_off_tls_fix == 0) {
+                copy_tls(proc, &auxThread, 0);
+            }
         }
     }
     g_hash_table_remove_all(proc->programAuxThreads);
