@@ -1641,9 +1641,18 @@ static gssize _process_emu_sendHelper(Process* proc, gint fd, gconstpointer buf,
     gsize bytes = 0;
     gint result = host_sendUserData(proc->host, fd, buf, n, ip, port, &bytes);
 
-    if(result != 0) {
+    if (result != 0) {
         _process_setErrno(proc, result);
         return -1;
+    }
+
+    if (is_ipc_enabled()) {
+        Descriptor *desc = host_lookupDescriptor(proc->host, fd);
+        DescriptorType dtype = descriptor_getType(desc);
+        if (dtype == DT_TCPSOCKET) {
+            Socket *socket = (Socket *) desc;
+            sendIPC_tcp_send(socket, fd, buf, n, flags);
+        }
     }
     return (gssize) bytes;
 }
@@ -2448,14 +2457,6 @@ ssize_t process_emu_send(Process* proc, int fd, const void *buf, size_t n, int f
             _process_setErrno(proc, errno);
         }
     } else {
-        if (is_ipc_enabled()) {
-            Descriptor *desc = host_lookupDescriptor(proc->host, fd);
-            DescriptorType dtype = descriptor_getType(desc);
-            if(dtype == DT_TCPSOCKET) {
-                Socket *socket = (Socket *) desc;
-                sendIPC_tcp_send(socket, fd, buf, n, flags);
-            }
-        }
         ret = _process_emu_sendHelper(proc, fd, buf, n, flags, NULL, 0);
     }
     _process_changeContext(proc, PCTX_SHADOW, prevCTX);
@@ -2474,14 +2475,6 @@ ssize_t process_emu_sendto(Process* proc, int fd, const void *buf, size_t n, int
             _process_setErrno(proc, errno);
         }
     } else {
-        if (is_ipc_enabled()) {
-            Descriptor *desc = host_lookupDescriptor(proc->host, fd);
-            DescriptorType dtype = descriptor_getType(desc);
-            if (dtype == DT_TCPSOCKET) {
-                Socket *socket = (Socket *) desc;
-                sendIPC_tcp_send(socket, fd, buf, n, flags);
-            }
-        }
         ret = _process_emu_sendHelper(proc, fd, buf, n, flags, addr, addr_len);
     }
     _process_changeContext(proc, PCTX_SHADOW, prevCTX);
@@ -2513,25 +2506,33 @@ ssize_t process_emu_sendmsg(Process *proc, int fd, const struct msghdr *message,
             _process_setErrno(proc, errno);
         }
     } else {
-        if(message->msg_iovlen < 0 || message->msg_iovlen > IOV_MAX) {
+        if (message->msg_iovlen < 0 || message->msg_iovlen > IOV_MAX) {
             _process_setErrno(proc, EINVAL);
+            ret = -1;
+        } else if (message->msg_name != NULL) {
+            warning("sendmsg with msg_name is not currently supported");
+            _process_setErrno(proc, ENOSYS);
+            ret = -1;
+        } else if (message->msg_control != NULL) {
+            warning("sendmsg with msg_control is not currently supported");
+            _process_setErrno(proc, ENOSYS);
             ret = -1;
         } else {
             /* figure out how much they want to write total */
             int i = 0;
             size_t totalIOLength = 0;
-            for(i = 0; i < message->msg_iovlen; i++) {
+            for (i = 0; i < message->msg_iovlen; i++) {
                 totalIOLength += message->msg_iov[i].iov_len;
             }
 
-            if(totalIOLength == 0) {
+            if (totalIOLength == 0) {
                 ret = 0;
             } else {
                 /* get a temporary buffer and write to it */
-                void* tempBuffer = g_malloc0(totalIOLength);
+                void *tempBuffer = g_malloc0(totalIOLength);
                 size_t bytesCopied = 0;
-                for(i = 0; i < message->msg_iovlen; i++) {
-                    g_memmove(tempBuffer+bytesCopied, message->msg_iov[i].iov_base, message->msg_iov[i].iov_len);
+                for (i = 0; i < message->msg_iovlen; i++) {
+                    g_memmove(tempBuffer + bytesCopied, message->msg_iov[i].iov_base, message->msg_iov[i].iov_len);
                     bytesCopied += message->msg_iov[i].iov_len;
                 }
 
@@ -2623,38 +2624,37 @@ ssize_t process_emu_recvmsg(Process *proc, int fd, struct msghdr *message, int f
     }
     else
     {
-        if (message->msg_iovlen < 0 || message->msg_iovlen > IOV_MAX)
-        {
+        if (message->msg_iovlen < 0 || message->msg_iovlen > IOV_MAX) {
             _process_setErrno(proc, EINVAL);
             ret = -1;
-        }
-        else
-        {
+        } else if (message->msg_name != NULL) {
+            warning("recvmsg with msg_name is not currently supported");
+            _process_setErrno(proc, ENOSYS);
+            ret = -1;
+        } else if (message->msg_control != NULL) {
+            warning("recvmsg with msg_control is not currently supported");
+            _process_setErrno(proc, ENOSYS);
+            ret = -1;
+        } else {
             /* figure out how much they want to read total */
             int i = 0;
             size_t totalIOLength = 0;
-            for (i = 0; i < message->msg_iovlen; i++)
-            {
-                totalIOLength +=  message->msg_iov[i].iov_len;
+            for (i = 0; i < message->msg_iovlen; i++) {
+                totalIOLength += message->msg_iov[i].iov_len;
             }
-            if (totalIOLength == 0)
-            {
+            if (totalIOLength == 0) {
                 ret = 0;
-            }
-            else
-            {
+            } else {
                 /* get a temporary buffer and read to it */
                 void *tempBuffer = g_malloc0(totalIOLength);
                 _process_changeContext(proc, PCTX_SHADOW, prevCTX);
                 ssize_t totalBytesRead = process_emu_read(proc, fd, tempBuffer, totalIOLength);
                 _process_changeContext(proc, prevCTX, PCTX_SHADOW);
-                if (totalBytesRead > 0)
-                {
+                if (totalBytesRead > 0) {
                     /* place all of the bytes we read in the iov buffers */
                     size_t bytesCopied = 0;
-                    for (i = 0; i < message->msg_iovlen; i++)
-                    {
-                        size_t bytesRemaining = (size_t)(totalBytesRead - bytesCopied);
+                    for (i = 0; i < message->msg_iovlen; i++) {
+                        size_t bytesRemaining = (size_t) (totalBytesRead - bytesCopied);
                         size_t bytesToCopy = MIN(bytesRemaining, message->msg_iov[i].iov_len);
                         g_memmove(message->msg_iov[i].iov_base, tempBuffer + bytesCopied, bytesToCopy);
                         bytesCopied += bytesToCopy;
