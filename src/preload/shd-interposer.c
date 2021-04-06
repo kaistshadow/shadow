@@ -536,36 +536,6 @@ void shadow_instrumentation_marker_set(int file_symbol, int line_cnt) {
     }
 }
 
-char* get_tmp_file_path() {
-    Process* proc = NULL;
-    if((proc = _doEmulate()) != NULL) {
-        return process_emu_get_tmp_file_path(proc);
-    } else {
-        ENSURE(get_tmp_file_path);
-        return director.next.get_tmp_file_path();
-    }
-}
-
-char* get_actual_path(int fileno) {
-    Process* proc = NULL;
-    if((proc = _doEmulate()) != NULL) {
-        return process_emu_get_actual_path(proc,fileno);
-    } else {
-        ENSURE(get_actual_path);
-        return director.next.get_actual_path(fileno);
-    }
-}
-
-int compare_dat_files(int fileno) {
-    Process* proc = NULL;
-    if((proc = _doEmulate()) != NULL) {
-        return process_emu_compare_dat_files(proc,fileno);
-    } else {
-        ENSURE(compare_dat_files);
-        return director.next.compare_dat_files(fileno);
-    }
-}
-
 void shadow_bitcoin_register_hash(const char hash[]) {
     Process* proc = NULL;
     if((proc = _doEmulate()) != NULL) {

@@ -48,7 +48,7 @@ struct _Options {
     GString* inputXMLFilename;
     // BLEEP storage sharing
     gchar* storage_mode;
-
+    gboolean turn_off_tls_fix;
     MAGIC_DECLARE;
 };
 
@@ -78,6 +78,7 @@ Options* options_new(gint argc, gchar* argv[]) {
     options->cpuThreshold = -1;
     options->cpuPrecision = 200;
     options->heartbeatInterval = 1;
+    options->turn_off_tls_fix = 1;
 
     /* set options to change defaults for the main group */
     options->mainOptionGroup = g_option_group_new("main", "Main Options", "Primary simulator options", NULL, NULL);
@@ -97,6 +98,7 @@ Options* options_new(gint argc, gchar* argv[]) {
       { "valgrind", 'x', 0, G_OPTION_ARG_NONE, &(options->runValgrind), "Run through valgrind for debugging", NULL },
       { "version", 'v', 0, G_OPTION_ARG_NONE, &(options->printSoftwareVersion), "Print software version and exit", NULL },
       { "storage_mode", 'o', 0, G_OPTION_ARG_STRING, &(options->storage_mode), "Storage sharing for bleep ('disable','segment','fixed') ['disable']", "MODE"},
+      { "turn_off_tls_fix", 'f', 0, G_OPTION_ARG_INT, &(options->turn_off_tls_fix), "Turn on/off tlx-fix mechanism. 1 to turn off and 0 to turn on. [1])", "N"},
       { NULL },
     };
 
@@ -166,6 +168,9 @@ Options* options_new(gint argc, gchar* argv[]) {
 
     if(options->nWorkerThreads < 0) {
         options->nWorkerThreads = 0;
+    }
+    if (options->turn_off_tls_fix != 0 && options->turn_off_tls_fix !=1 ) {
+        options->turn_off_tls_fix = 1;
     }
     if(options->logLevelInput == NULL) {
         options->logLevelInput = g_strdup("message");
@@ -448,5 +453,10 @@ const gchar* options_getDataOutputPath(Options* options) {
 const gchar* options_getDataTemplatePath(Options* options) {
     MAGIC_ASSERT(options);
     return options->dataTemplatePath;
+}
+
+gboolean options_getTlsFixTurnOnOffStatus (Options* options) {
+    MAGIC_ASSERT(options);
+    return options->turn_off_tls_fix;
 }
 
