@@ -283,3 +283,26 @@ char file_control::has_descriptor(FILE *stream) {
     }
     return 1;
 }
+
+const char* storagemode_toStr(StorageMode mode) {
+    switch (mode) {
+        case STORAGE_SHARE_SEGMENT:
+            return "segment";
+        case STORAGE_SHARE_FIXED:
+            return "fixed";
+        case STORAGE_SHARE_DISABLE:
+        default:
+            return "disable";
+    }
+}
+StorageMode storagemode_fromStr(const char* storageStr) {
+    if(storageStr == NULL) {
+        return STORAGE_SHARE_DISABLE;
+    } else if (g_ascii_strcasecmp(storageStr, "segment") == 0) {
+        return STORAGE_SHARE_SEGMENT;
+    } else if (g_ascii_strcasecmp(storageStr, "fixed") == 0) {
+        return STORAGE_SHARE_FIXED;
+    } else {
+        return STORAGE_SHARE_DISABLE;
+    }
+}

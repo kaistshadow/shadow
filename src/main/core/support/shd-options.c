@@ -46,6 +46,8 @@ struct _Options {
     gboolean runTestExample;
 
     GString* inputXMLFilename;
+    // BLEEP storage sharing
+    gchar* storage_mode;
 
     MAGIC_DECLARE;
 };
@@ -94,6 +96,7 @@ Options* options_new(gint argc, gchar* argv[]) {
       { "workers", 'w', 0, G_OPTION_ARG_INT, &(options->nWorkerThreads), "Run concurrently with N worker threads [0]", "N" },
       { "valgrind", 'x', 0, G_OPTION_ARG_NONE, &(options->runValgrind), "Run through valgrind for debugging", NULL },
       { "version", 'v', 0, G_OPTION_ARG_NONE, &(options->printSoftwareVersion), "Print software version and exit", NULL },
+      { "storage_mode", 'o', 0, G_OPTION_ARG_STRING, &(options->storage_mode), "Storage sharing for bleep ('disable','segment','fixed') ['disable']", "MODE"},
       { NULL },
     };
 
@@ -210,6 +213,10 @@ Options* options_new(gint argc, gchar* argv[]) {
     if(options->dataTemplatePath == NULL) {
         options->dataTemplatePath = g_strdup("shadow.data.template");
     }
+    // BLEEP storage_share
+    if(options->storage_mode == NULL) {
+        options->storage_mode = g_strdup("disable");
+    }
 
     options->inputXMLFilename = g_string_new(argv[1]);
 
@@ -235,6 +242,8 @@ void options_free(Options* options) {
     g_free(options->interfaceQueuingDiscipline);
     g_free(options->eventSchedulingPolicy);
     g_free(options->tcpCongestionControl);
+    // BLEEP storage sharing
+    g_free(options->storage_mode);
     if(options->argstr) {
         g_free(options->argstr);
     }
@@ -264,6 +273,11 @@ LogLevel options_getHeartbeatLogLevel(Options* options) {
     MAGIC_ASSERT(options);
     const gchar* l = (const gchar*) options->heartbeatLogLevelInput;
     return loglevel_fromStr(l);
+}
+StorageMode options_getStorageMode(Options* options) {
+    MAGIC_ASSERT(options);
+    const gchar* m = (const gchar*) options->storage_mode;
+    return storagemode_fromStr(m);
 }
 
 SimulationTime options_getHeartbeatInterval(Options* options) {

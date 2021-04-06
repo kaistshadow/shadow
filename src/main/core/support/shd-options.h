@@ -61,6 +61,9 @@ void options_free(Options* options);
 LogLevel options_getLogLevel(Options* options);
 LogLevel options_getHeartbeatLogLevel(Options* options);
 
+// for BLEEP Storage Sharing
+StorageMode options_getStorageMode(Options* options);
+
 /**
  * Get the configured log level at which heartbeat messages are printed,
  * based on command line input.
