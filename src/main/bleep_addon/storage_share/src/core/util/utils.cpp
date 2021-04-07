@@ -72,8 +72,8 @@ int parse_filemode(const char* mode) {
 
 int random_name_base = 0;
 std::string generate_filename(datatype* dtype, size_t* startoffset) {
-    char random_text[30];
-    sprintf(random_text, "%d-%d.txt", dtype->get_typeid(), random_name_base++);
+    char random_text[52];
+    sprintf(random_text, "storage_share_datadir/%d-%d.txt", dtype->get_typeid(), random_name_base++);
     *startoffset = 0;
 
     return std::string(random_text);
