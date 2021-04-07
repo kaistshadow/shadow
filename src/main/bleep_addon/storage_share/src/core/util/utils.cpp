@@ -9,9 +9,17 @@
 #include <string>
 #include <unistd.h>
 #include <cstdio>
+#include <sys/stat.h>
 
+
+void _mkdir_storage_share() {
+    if (mkdir("storage_share_datadir", 0776) == -1 && errno != EEXIST) {
+        exit(-1);
+    }
+}
 int init_fd_assignment_system() {
-    FILE* f = fopen("bleep_fd_assign", "a");
+    _mkdir_storage_share();
+    FILE* f = fopen("storage_share_datadir/storage_share_base_fd", "a");
     int basefd = dup(fileno(f));
     fclose(f);
 	return basefd;

@@ -67,14 +67,5 @@ public:
 
     char has_descriptor(FILE * stream);
 };
-typedef enum _StorageMode StorageMode;
-enum _StorageMode {
-    STORAGE_SHARE_DISABLE,
-    STORAGE_SHARE_SEGMENT,
-    STORAGE_SHARE_FIXED,
-};
-const char* storagemode_toStr(StorageMode mode);
-StorageMode storagemode_fromStr(const char* storageStr);
-
 
 #endif //STORAGE_SHARING_MODULE_FILE_CONTROL_H

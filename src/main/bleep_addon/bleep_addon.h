@@ -5,6 +5,9 @@
 // So, do not write functionality logic for each tasks in this code,
 // just make submodule directories and separate them to other submodules.
 
+// for StorageMode
+#include "storage_share/src/core/util/options.h"
+
 #include <stdio.h>
 
 #ifdef __cplusplus

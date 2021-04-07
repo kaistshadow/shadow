@@ -8,6 +8,7 @@ SET(BLEEP_ADDON_SRC
 )
 SET(BLEEP_ADDON_STORAGE_SHARE_SRC
     storage_share/src/core/util/utils.cpp
+    storage_share/src/core/util/options.cpp
     storage_share/src/core/datatypes/datatype.cpp
     storage_share/src/core/data_unit/data_segment.cpp
     storage_share/src/core/share/sharing_tracker.cpp

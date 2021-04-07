@@ -57,7 +57,6 @@
 #include <glib/gstdio.h>
 
 //Added for C++ bleep addon module on Shadow
-#include "bleep_addon/bleep_addon.h"
 #include "bleep_addon/bitcoin_log_map/log_map.h"
 #include "bleep_addon/bitcoin_storage_share/storage_share.h"
 

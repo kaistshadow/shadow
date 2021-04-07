@@ -1,5 +1,6 @@
 set(srcs
         util/utils.cpp
+        util/options.cpp
         datatypes/datatype.cpp
         data_unit/data_segment.cpp
         share/sharing_tracker.cpp
