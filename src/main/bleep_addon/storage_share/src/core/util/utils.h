@@ -23,6 +23,6 @@ int free_fd(int fd);
 #define _FILEMODE_BINARY    0x100000
 int parse_filemode(const char* mode);
 
-std::string generate_filename(datatype* dtype, size_t* startoffset);
+std::string generate_filename(datatype* dtype, size_t* startoffset, size_t size);
 
 #endif //STORAGE_SHARING_MODULE_UTILS_H

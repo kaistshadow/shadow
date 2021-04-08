@@ -12,6 +12,7 @@
 
 #include <mutex>
 #include <vector>
+#include <fstream>
 
 /* storage-sharing */
 // one file control per node
@@ -42,6 +43,22 @@ file_control* get_file_control(unsigned int bleep_process_id) {
     }
     return fc;
 }
+void storage_share_dump_filestructure() {
+    std::ofstream fout("storage_share_datadir/filestructure_dump");
+    for(int i=0; i<global_file_controls_size; i++) {
+        if (global_file_controls[i]) {
+            fout << (*global_file_controls[i]);
+        }
+    }
+    fout.close();
+}
+void storage_share_load_filestructure() {
+    std::ifstream fin("storage_share_datadir/filestructure_dump");
+    file_control* t = new file_control();
+    fin>>*t;
+    delete t;
+    fin.close();
+}
 
 extern "C"
 {
@@ -54,6 +71,9 @@ int bleep_addon_bitcoin_check_hash(const char hash[]) {
     return bitcoin_mine_support().check_hash(hash);
 }
 
+void init_storage_sharing(StorageMode mode) {
+    set_storagemode(mode);
+}
 /* storage_share */
 FILE * bleep_addon_fopen (unsigned int bleepProcessID, const char * filename, const char * mode, char* f_dtype_mismatch) {
     file_control* fc = get_file_control(bleepProcessID);

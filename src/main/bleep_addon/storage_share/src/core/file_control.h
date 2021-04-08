@@ -10,6 +10,7 @@
 #include "file/file_descriptor.h"
 #include "share/sharing_tracker.h"
 
+#include <iostream>
 #include <cstdio>
 
 // TEMPORARY: for now, it assumes that multiple threads does not access one file_control at the same time.
@@ -66,6 +67,13 @@ public:
     int posix_fallocate(int fd, off_t offset, off_t len);
 
     char has_descriptor(FILE * stream);
+
+    friend std::ostream& operator<<(std::ostream& os, const file_control& data_);
+    friend std::istream& operator>>(std::istream& is, const file_control& data_);
+
 };
+
+std::ostream& operator<<(std::ostream& os, const file_control& data_);
+std::istream& operator>>(std::istream& is, const file_control& data_);
 
 #endif //STORAGE_SHARING_MODULE_FILE_CONTROL_H

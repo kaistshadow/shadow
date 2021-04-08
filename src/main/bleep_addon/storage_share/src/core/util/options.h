@@ -19,6 +19,8 @@ enum _StorageMode {
 typedef enum _StorageMode StorageMode;
 const char* storagemode_toStr(StorageMode mode);
 StorageMode storagemode_fromStr(const char* storageStr);
+StorageMode get_storagemode();
+StorageMode set_storagemode(StorageMode mode);
 
 #ifdef __cplusplus
 }

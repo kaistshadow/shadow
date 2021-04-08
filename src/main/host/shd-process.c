@@ -84,8 +84,6 @@
 
 #define PROC_PTH_STACK_SIZE 1024*1024
 
-#define BLEEP_ADDON_ENABLED
-
 #include "shadow.h"
 
 /**
@@ -3772,14 +3770,14 @@ int process_emu_fileno(Process* proc, FILE *stream) {
     // BLEEP: should be modified to use storage_sharing
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
 
-#ifdef BLEEP_ADDON_ENABLED
-    // BLEEP storage-sharing
-    gint res = bleep_addon_fileno(proc->bleepProcessID, stream);
-    if (res != DTYPE_MISMATCH) {
-        _process_changeContext(proc, PCTX_SHADOW, prevCTX);
-        return res;
+    if (get_storagemode() != STORAGE_SHARE_DISABLE) {
+        // BLEEP storage-sharing
+        gint res = bleep_addon_fileno(proc->bleepProcessID, stream);
+        if (res != DTYPE_MISMATCH) {
+            _process_changeContext(proc, PCTX_SHADOW, prevCTX);
+            return res;
+        }
     }
-#endif
 
     gint osfd = fileno(stream);
     if(osfd == -1) {
@@ -3838,15 +3836,15 @@ FILE *process_emu_fopen(Process* proc, const char *path, const char *mode) {
     // BLEEP: should be modified to use storage_sharing
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
 
-#ifdef BLEEP_ADDON_ENABLED
-    // BLEEP storage-sharing
-    char dtype_mismatch = 0;
-    FILE* res = bleep_addon_fopen(proc->bleepProcessID, path, mode, &dtype_mismatch);
-    if (!dtype_mismatch) {
-        _process_changeContext(proc, PCTX_SHADOW, prevCTX);
-        return res;
+    if (get_storagemode() != STORAGE_SHARE_DISABLE) {
+        // BLEEP storage-sharing
+        char dtype_mismatch = 0;
+        FILE* res = bleep_addon_fopen(proc->bleepProcessID, path, mode, &dtype_mismatch);
+        if (!dtype_mismatch) {
+            _process_changeContext(proc, PCTX_SHADOW, prevCTX);
+            return res;
+        }
     }
-#endif
 
     FILE* osfile = NULL;
     if(prevCTX == PCTX_PLUGIN && g_ascii_strncasecmp(path, "/etc/localtime", 14) == 0) {
@@ -4038,14 +4036,14 @@ int process_emu_fclose(Process* proc, FILE *fp) {
     // BLEEP: should be modified to use storage_sharing
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
 
-#ifdef BLEEP_ADDON_ENABLED
-    // BLEEP storage-sharing
-    gint res = bleep_addon_fclose(proc->bleepProcessID, fp);
-    if (res != DTYPE_MISMATCH) {
-        _process_changeContext(proc, PCTX_SHADOW, prevCTX);
-        return res;
+    if (get_storagemode() != STORAGE_SHARE_DISABLE) {
+        // BLEEP storage-sharing
+        gint res = bleep_addon_fclose(proc->bleepProcessID, fp);
+        if (res != DTYPE_MISMATCH) {
+            _process_changeContext(proc, PCTX_SHADOW, prevCTX);
+            return res;
+        }
     }
-#endif
 
     gint osfd = fileno(fp);
     gint shadowHandle = osfd >= 0 ? host_getShadowHandle(proc->host, osfd) : -1;
@@ -4067,14 +4065,14 @@ int process_emu_fseek(Process* proc, FILE *stream, long offset, int whence) {
     // BLEEP: should be modified to use storage_sharing
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
 
-#ifdef BLEEP_ADDON_ENABLED
-    // BLEEP storage-sharing
-    int res = bleep_addon_fseek(proc->bleepProcessID, stream, offset, whence);
-    if (res != DTYPE_MISMATCH) {
-        _process_changeContext(proc, PCTX_SHADOW, prevCTX);
-        return res;
+    if (get_storagemode() != STORAGE_SHARE_DISABLE) {
+        // BLEEP storage-sharing
+        int res = bleep_addon_fseek(proc->bleepProcessID, stream, offset, whence);
+        if (res != DTYPE_MISMATCH) {
+            _process_changeContext(proc, PCTX_SHADOW, prevCTX);
+            return res;
+        }
     }
-#endif
 
     int ret = fseek(stream, offset, whence);
 
@@ -4086,14 +4084,14 @@ long process_emu_ftell(Process* proc, FILE *stream) {
     // BLEEP: should be modified to use storage_sharing
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
 
-#ifdef BLEEP_ADDON_ENABLED
-    // BLEEP storage-sharing
-    long res = bleep_addon_ftell(proc->bleepProcessID, stream);
-    if (res != DTYPE_MISMATCH) {
-        _process_changeContext(proc, PCTX_SHADOW, prevCTX);
-        return res;
+    if (get_storagemode() != STORAGE_SHARE_DISABLE) {
+        // BLEEP storage-sharing
+        long res = bleep_addon_ftell(proc->bleepProcessID, stream);
+        if (res != DTYPE_MISMATCH) {
+            _process_changeContext(proc, PCTX_SHADOW, prevCTX);
+            return res;
+        }
     }
-#endif
 
     long ret = ftell(stream);
 
@@ -4381,17 +4379,17 @@ int process_emu_posix_fallocate(Process* proc, int fd, off_t offset, off_t len) 
     // BLEEP: should be modified to use storage_sharing
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
 
-#ifdef BLEEP_ADDON_ENABLED
-    // BLEEP storage-sharing
-    int res = bleep_addon_posix_fallocate(proc->bleepProcessID, fd, offset, len);
-    if (res != DTYPE_MISMATCH) {
-        _process_changeContext(proc, PCTX_SHADOW, prevCTX);
-        if (res < 0 ) {
-            _process_setErrno(proc, EBADF);
+    if (get_storagemode() != STORAGE_SHARE_DISABLE) {
+        // BLEEP storage-sharing
+        int res = bleep_addon_posix_fallocate(proc->bleepProcessID, fd, offset, len);
+        if (res != DTYPE_MISMATCH) {
+            _process_changeContext(proc, PCTX_SHADOW, prevCTX);
+            if (res < 0) {
+                _process_setErrno(proc, EBADF);
+            }
+            return res;
         }
-        return res;
     }
-#endif
 
     if (host_isShadowDescriptor(proc->host, fd)) {
         warning("posix_fallocate not implemented for Shadow descriptor types");
@@ -4717,15 +4715,15 @@ size_t process_emu_fread(Process* proc, void *ptr, size_t size, size_t nmemb, FI
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
     size_t ret;
 
-#ifdef BLEEP_ADDON_ENABLED
-    // BLEEP storage-sharing
-    char dtype_mismatch = 0;
-    size_t res = bleep_addon_fread(proc->bleepProcessID, ptr, size, nmemb, stream, &dtype_mismatch);
-    if (!dtype_mismatch) {
-        _process_changeContext(proc, PCTX_SHADOW, prevCTX);
-        return res;
+    if (get_storagemode() != STORAGE_SHARE_DISABLE) {
+        // BLEEP storage-sharing
+        char dtype_mismatch = 0;
+        size_t res = bleep_addon_fread(proc->bleepProcessID, ptr, size, nmemb, stream, &dtype_mismatch);
+        if (!dtype_mismatch) {
+            _process_changeContext(proc, PCTX_SHADOW, prevCTX);
+            return res;
+        }
     }
-#endif
 
     /* get the fd the operating system uses to refer to this FILE stream */
     int osfd = fileno(stream);
@@ -4783,15 +4781,15 @@ size_t process_emu_fwrite(Process* proc, const void *ptr, size_t size, size_t nm
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
     size_t ret;
 
-#ifdef BLEEP_ADDON_ENABLED
-    // BLEEP storage-sharing
-    char dtype_mismatch = 0;
-    size_t res = bleep_addon_fwrite(proc->bleepProcessID, ptr, size, nmemb, stream, &dtype_mismatch);
-    if (!dtype_mismatch) {
-        _process_changeContext(proc, PCTX_SHADOW, prevCTX);
-        return res;
+    if (get_storagemode() != STORAGE_SHARE_DISABLE) {
+        // BLEEP storage-sharing
+        char dtype_mismatch = 0;
+        size_t res = bleep_addon_fwrite(proc->bleepProcessID, ptr, size, nmemb, stream, &dtype_mismatch);
+        if (!dtype_mismatch) {
+            _process_changeContext(proc, PCTX_SHADOW, prevCTX);
+            return res;
+        }
     }
-#endif
 
     int fd = fileno(stream);
     if(prevCTX == PCTX_PLUGIN && (fd == STDOUT_FILENO || fd == STDERR_FILENO)) {
@@ -4908,14 +4906,14 @@ int process_emu_fflush(Process* proc, FILE *stream) {
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
     int ret;
 
-#ifdef BLEEP_ADDON_ENABLED
-    // BLEEP storage-sharing
-    int res = bleep_addon_fflush(proc->bleepProcessID, stream);
-    if (res != DTYPE_MISMATCH) {
-        _process_changeContext(proc, PCTX_SHADOW, prevCTX);
-        return res;
+    if (get_storagemode() != STORAGE_SHARE_DISABLE) {
+        // BLEEP storage-sharing
+        int res = bleep_addon_fflush(proc->bleepProcessID, stream);
+        if (res != DTYPE_MISMATCH) {
+            _process_changeContext(proc, PCTX_SHADOW, prevCTX);
+            return res;
+        }
     }
-#endif
 
     int fd = fileno(stream);
     if(prevCTX == PCTX_PLUGIN && (fd == STDOUT_FILENO || fd == STDERR_FILENO)) {

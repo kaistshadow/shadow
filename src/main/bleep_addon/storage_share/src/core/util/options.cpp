@@ -28,3 +28,10 @@ StorageMode storagemode_fromStr(const char* storageStr) {
         return STORAGE_SHARE_DISABLE;
     }
 }
+StorageMode g_storagemode;
+StorageMode get_storagemode() {
+    return g_storagemode;
+}
+StorageMode set_storagemode(StorageMode mode) {
+    g_storagemode = mode;
+}

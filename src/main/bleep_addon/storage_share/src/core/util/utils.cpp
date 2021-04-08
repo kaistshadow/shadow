@@ -5,7 +5,9 @@
 #include "utils.h"
 
 #include "../datatypes/datatype.h"
+#include "../util/options.h"
 
+#include <vector>
 #include <string>
 #include <unistd.h>
 #include <cstdio>
@@ -71,10 +73,40 @@ int parse_filemode(const char* mode) {
 }
 
 int random_name_base = 0;
-std::string generate_filename(datatype* dtype, size_t* startoffset) {
-    char random_text[52];
-    sprintf(random_text, "storage_share_datadir/%d-%d.txt", dtype->get_typeid(), random_name_base++);
-    *startoffset = 0;
+size_t OFFSET_LIMIT = 10000;
+struct dtype_filename {
+    int fileno;
+    size_t offset;
+};
+std::vector<struct dtype_filename> current_filenames;
+// safe because it is locked on function 'sharing_unit* make_shared(memory_unit* m)'
+std::string generate_filename(datatype* dtype, size_t* startoffset, size_t size) {
+    if(get_storagemode() == STORAGE_SHARE_FIXED) {
+        int tid = dtype->get_typeid();
+        if (tid >= current_filenames.size()) {
+            current_filenames.resize(tid + 1, {0, 0});
+        } else if (current_filenames[tid].offset + size > OFFSET_LIMIT) {
+            if (size > OFFSET_LIMIT) {
+                printf("SHARING OFFSET TOO LOW\n");
+                exit(-1);
+            }
+            current_filenames[tid].fileno++;
+            current_filenames[tid].offset = 0;
+        }
+        char random_text[52];
+        sprintf(random_text, "storage_share_datadir/%d-%d.txt", dtype->get_typeid(), current_filenames[tid].fileno);
+        *startoffset = current_filenames[tid].offset;
+        current_filenames[tid].offset += size;
 
-    return std::string(random_text);
+        return std::string(random_text);
+    } else if (get_storagemode() == STORAGE_SHARE_SEGMENT) {
+        char random_text[52];
+        sprintf(random_text, "storage_share_datadir/%d-%d.txt", dtype->get_typeid(), random_name_base++);
+        *startoffset = 0;
+
+        return std::string(random_text);
+    } else {
+        printf("storage mode is not properly initialized for sharing\n");
+        exit(-1);
+    }
 }

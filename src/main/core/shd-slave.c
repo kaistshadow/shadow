@@ -197,11 +197,14 @@ Slave* slave_new(Master* master, Options* options, SimulationTime endTime, Simul
     /* now make sure the hosts path exists, as it may not have been in the template */
     g_mkdir_with_parents(slave->hostsPath, 0775);
 
+    init_storage_sharing(options_getStorageMode(options));
+    storage_share_load_filestructure();
     return slave;
 }
 
 gint slave_free(Slave* slave) {
     MAGIC_ASSERT(slave);
+    storage_share_dump_filestructure();
     gint returnCode = (slave->numPluginErrors > 0) ? -1 : 0;
 
     /* we will never execute inside the plugin again */

@@ -283,3 +283,15 @@ char file_control::has_descriptor(FILE *stream) {
     }
     return 1;
 }
+
+std::ostream& operator<<(std::ostream& os, const file_control& data_) {
+    os << "debug";
+    return os;
+}
+std::istream& operator>>(std::istream& is, const file_control& data_) {
+    char buffer[6];
+    buffer[5] = 0;
+    is.read(buffer, 5);
+    std::cout<<"istream test: "<<buffer;
+    return is;
+}

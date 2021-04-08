@@ -26,6 +26,9 @@ void bleep_addon_bitcoin_register_hash(const char hash[]);
 int bleep_addon_bitcoin_check_hash(const char hash[]);
 
 /* storage_share */
+void storage_share_dump_filestructure();
+void storage_share_load_filestructure();
+void init_storage_sharing(StorageMode mode);
 FILE * bleep_addon_fopen (unsigned int bleepProcessID, const char * filename, const char * mode, char* f_dtype_mismatch);
 FILE * bleep_addon_fdopen(unsigned int bleepProcessID, int fd, const char *mode, char* f_dtype_mismatch);
 int bleep_addon_fclose (unsigned int bleepProcessID, FILE * stream);
