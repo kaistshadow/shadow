@@ -120,6 +120,8 @@ set(REMORA_SRC
 add_library(shadow-remora SHARED ${REMORA_SRC})
 install(TARGETS shadow-remora DESTINATION lib)
 
+file(GLOB_RECURSE BLEEP_ADDON_SRC ${CMAKE_CURRENT_SOURCE_DIR} *.c *.cpp)
+
 ## attach BLEEP ADDON library module
 SET(BLEEP_ADDON_SRC
     bleep_addon/bleep_addon.cpp

@@ -547,13 +547,13 @@ void shadow_instrumentation_marker_set(int file_symbol, int line_cnt) {
 }
 
 //Bitcoin coinflip validation Functions
-void shadow_bitcoin_register_hash(const char hash[]) {
+void shadow_bitcoin_register_hash(const char hash[],int reindex) {
   Process* proc = NULL;
   if((proc = _doEmulate()) != NULL) {
-    return process_emu_shadow_bitcoin_register_hash(proc,hash);
+    return process_emu_shadow_bitcoin_register_hash(proc, hash, reindex);
   } else {
     ENSURE(shadow_bitcoin_register_hash);
-    return director.next.shadow_bitcoin_register_hash(hash);
+    return director.next.shadow_bitcoin_register_hash(hash,reindex);
   }
 }
 int shadow_bitcoin_check_hash(const char hash[]) {
@@ -563,6 +563,16 @@ int shadow_bitcoin_check_hash(const char hash[]) {
   } else {
     ENSURE(shadow_bitcoin_check_hash);
     return director.next.shadow_bitcoin_check_hash(hash);
+  }
+}
+
+void shadow_bitcoin_load_hash() {
+  Process* proc = NULL;
+  if((proc = _doEmulate()) != NULL) {
+    return process_emu_shadow_bitcoin_load_hash(proc);
+  } else {
+    ENSURE(shadow_bitcoin_load_hash);
+    return director.next.shadow_bitcoin_load_hash();
   }
 }
 
