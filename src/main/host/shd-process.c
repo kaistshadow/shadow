@@ -8413,6 +8413,26 @@ void process_emu_shadow_instrumentation_marker_set(Process* proc, int file_symbo
     return;
 }
 
+// bleep memshare
+void process_emu_shadow_try_register_memshare_table(Process* proc, void* type_idx_ref, void* mtbl) {
+    ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
+    try_register_memshare_table(type_idx_ref, mtbl);
+    _process_changeContext(proc, PCTX_SHADOW, prevCTX);
+    return;
+}
+void process_emu_shadow_memshare_try_share(Process* proc, void* type_idx_ref, void* sptr_ref) {
+    ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
+    memshare_try_share(type_idx_ref, sptr_ref);
+    _process_changeContext(proc, PCTX_SHADOW, prevCTX);
+    return;
+}
+void* process_emu_shadow_memshare_lookup(Process* proc, void* type_idx_ref, void* sptr_ref) {
+    ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
+    void* res = memshare_lookup(type_idx_ref, sptr_ref);
+    _process_changeContext(proc, PCTX_SHADOW, prevCTX);
+    return res;
+}
+
 #define PROCESS_EMU_UNSUPPORTED(returntype, returnval, functionname) \
     returntype process_emu_##functionname(Process* proc, ...) { \
         ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW); \

@@ -5,6 +5,8 @@
 #ifndef UNTITLED15_MEMORY_SHARING_H
 #define UNTITLED15_MEMORY_SHARING_H
 
+#ifdef __cplusplus
+
 #include <typeinfo>
 #include <unordered_set>
 #include <unordered_map>
@@ -19,13 +21,19 @@
  */
 
 namespace memshare {
-    class memory_sharing_base {
+    class memory_sharing_unspecified {
+    private:
+        std::mutex tbl_lock;
     public:
-        virtual ~memory_sharing_base() {}
+        virtual ~memory_sharing_unspecified() {}
+        virtual void try_share(void* sptr_ref);
+        virtual void* lookup(void* sptr_ref);
+        void lock_tbl();
+        void unlock_tbl();
     };
 
     template <typename SPTR_ELEM>
-    class memory_sharing : public memory_sharing_base {
+    class memory_sharing : public memory_sharing_unspecified {
     private:
         struct Hash {
             template <typename T, template <typename ELEM> typename SPTR_TYPE>
@@ -43,48 +51,39 @@ namespace memshare {
     public:
         memory_sharing() {}
         virtual ~memory_sharing() {}
-        void try_share(SPTR_ELEM sptr) {
-            tbl.insert(sptr);
+        void try_share(void* sptr_ref) {
+            SPTR_ELEM* sptr_ptr = (SPTR_ELEM*)sptr_ref;
+            lock_tbl();
+            tbl.insert(*sptr_ptr);
+            unlock_tbl();
         }
-        SPTR_ELEM lookup(SPTR_ELEM sptr) {
-            auto it = tbl.find(sptr);
-            if (it != tbl.end())
-                return *it;
-            return sptr;
+        void* lookup(void* sptr_ref) {
+            SPTR_ELEM* sptr_ptr = (SPTR_ELEM*)sptr_ref;
+            lock_tbl();
+            auto it = tbl.find(*sptr_ptr);
+            unlock_tbl();
+            if (it != tbl.end()) {
+                SPTR_ELEM* res = new SPTR_ELEM();
+                *res = *it;
+                return (void *) res;
+            }
+            return sptr_ref;
         }
     };
-
-    extern std::unordered_map<std::type_index, memory_sharing_base*> global_mtbl_map;
-    extern std::mutex global_mtbl_lock;
-
-    template <typename SPTR_TYPE>
-    memory_sharing<SPTR_TYPE>* get_memory_sharing() {
-        global_mtbl_lock.lock();
-        auto it = global_mtbl_map.find(std::type_index(typeid(SPTR_TYPE)));
-        if (it != global_mtbl_map.end()) {
-            global_mtbl_lock.unlock();
-            memory_sharing<SPTR_TYPE>* mtbl = (memory_sharing<SPTR_TYPE>*)(it->second);
-            return mtbl;
-        } else {
-            memory_sharing<SPTR_TYPE>* mtbl = new memory_sharing<SPTR_TYPE>();
-            global_mtbl_map.insert({std::type_index(typeid(SPTR_TYPE)), mtbl});
-            global_mtbl_lock.unlock();
-            return mtbl;
-        }
-    }
-
-    template <typename SPTR_TYPE>
-    void try_share(SPTR_TYPE sptr) {
-        auto it = get_memory_sharing<SPTR_TYPE>();
-        it->try_share(sptr);
-    }
-    template <typename SPTR_TYPE>
-    SPTR_TYPE lookup(SPTR_TYPE sptr) {
-        auto it = get_memory_sharing<SPTR_TYPE>();
-        return it->lookup(sptr);
-    }
-
 }
+
+
+extern "C"
+{
+#endif
+
+void try_register_memshare_table(void* type_idx_ref, void* mtbl);
+void memshare_try_share(void* type_idx_ref, void* sptr_ref);
+void* memshare_lookup(void* type_idx_ref, void* sptr_ref);
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif //UNTITLED15_MEMORY_SHARING_H

@@ -576,3 +576,31 @@ void shadow_bitcoin_load_hash() {
   }
 }
 
+// bleep memshare
+void shadow_try_register_memshare_table(void* type_idx_ref, void* mtbl) {
+    Process* proc = NULL;
+    if((proc = _doEmulate()) != NULL) {
+        return process_emu_shadow_try_register_memshare_table(proc, type_idx_ref, mtbl);
+    } else {
+        ENSURE(shadow_try_register_memshare_table);
+        return director.next.shadow_try_register_memshare_table(type_idx_ref, mtbl);
+    }
+}
+void shadow_memshare_try_share(void* type_idx_ref, void* sptr_ref) {
+    Process* proc = NULL;
+    if((proc = _doEmulate()) != NULL) {
+        return process_emu_shadow_memshare_try_share(proc, type_idx_ref, sptr_ref);
+    } else {
+        ENSURE(shadow_memshare_try_share);
+        return director.next.shadow_memshare_try_share(type_idx_ref, sptr_ref);
+    }
+}
+void* shadow_memshare_lookup(void* type_idx_ref, void* sptr_ref) {
+    Process* proc = NULL;
+    if((proc = _doEmulate()) != NULL) {
+        return process_emu_shadow_memshare_lookup(proc, type_idx_ref, sptr_ref);
+    } else {
+        ENSURE(shadow_memshare_lookup);
+        return director.next.shadow_memshare_lookup(type_idx_ref, sptr_ref);
+    }
+}

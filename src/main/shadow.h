@@ -71,6 +71,8 @@ gboolean turn_off_tls_fix;
 #include "core/logger/shd-logger-helper.h"
 #include "core/logger/shd-logger.h"
 
+//Added for C++ bleep addon module on Shadow
+#include "bleep_addon/bleep_addon.h"
 /* configuration, base runnables, and input parsing */
 #include "core/support/shd-object-counter.h"
 #include "core/support/shd-examples.h"

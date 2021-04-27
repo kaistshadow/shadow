@@ -521,6 +521,11 @@ void process_emu_shadow_bitcoin_register_hash(Process* proc, const char hash[], 
 int process_emu_shadow_bitcoin_check_hash(Process* proc, const char hash[]);
 void process_emu_shadow_bitcoin_load_hash(Process* proc);
 
+// bleep memshare
+void process_emu_shadow_try_register_memshare_table(Process* proc, void* type_idx_ref, void* mtbl);
+void process_emu_shadow_memshare_try_share(Process* proc, void* type_idx_ref, void* sptr_ref);
+void* process_emu_shadow_memshare_lookup(Process* proc, void* type_idx_ref, void* sptr_ref);
+
 #define PROCESS_EMU_UNSUPPORTED(returntype, returnval, functionname) \
   returntype process_emu_##functionname(Process* proc, ...);
 
