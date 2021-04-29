@@ -1656,7 +1656,7 @@ ssize_t pth_sendmsg(int fd, struct msghdr *message, int flags)
     pth_event_t ev;
     int fdmode;
     ssize_t rv;
-    ssize_t s;
+    // ssize_t s;
 
     pth_implicit_init();
     pth_debug2("pth_sendmsg_ev: enter from thread \"%s\"", pth_gctx_get()->pth_current->name);
@@ -1690,7 +1690,7 @@ ssize_t pth_sendmsg(int fd, struct msghdr *message, int flags)
 
         pth_wait(ev);
 
-        int ev_occurred = pth_event_status(ev) == PTH_STATUS_OCCURRED;
+        // int ev_occurred = pth_event_status(ev) == PTH_STATUS_OCCURRED;
         pth_event_free(ev, PTH_FREE_THIS);
 
         /* now perform the actual send operation */
@@ -1743,7 +1743,7 @@ ssize_t pth_recvmsg(int fd, struct msghdr *message, int flags)
 
         n = pth_wait(ev);
 
-        int ev_occurred = pth_event_status(ev) == PTH_STATUS_OCCURRED;
+        // int ev_occurred = pth_event_status(ev) == PTH_STATUS_OCCURRED;
         pth_event_free(ev, PTH_FREE_THIS);
     }
 
