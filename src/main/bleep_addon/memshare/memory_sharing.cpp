@@ -28,13 +28,17 @@ void try_register_memshare_table(void* type_idx_ref, void* mtbl) {
 }
 void memshare_try_share(void* type_idx_ref, void* sptr_ref) {
     std::type_index* type_idx_ptr = (std::type_index*)type_idx_ref;
+    global_mtbl_lock.lock();
     auto it = global_mtbl_map.find(*type_idx_ptr);
+    global_mtbl_lock.unlock();
     memshare::memory_sharing_unspecified* mtbl = it->second;
     mtbl->try_share(sptr_ref);
 }
 void* memshare_lookup(void* type_idx_ref, void* sptr_ref) {
     std::type_index* type_idx_ptr = (std::type_index*)type_idx_ref;
+    global_mtbl_lock.lock();
     auto it = global_mtbl_map.find(*type_idx_ptr);
+    global_mtbl_lock.unlock();
     memshare::memory_sharing_unspecified* mtbl = it->second;
-    mtbl->lookup(sptr_ref);
+    return mtbl->lookup(sptr_ref);
 }
