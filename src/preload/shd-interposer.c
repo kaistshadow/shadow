@@ -408,7 +408,7 @@ int syscall(int number, ...) {
 
 /* exit family */
 
-void exit(int a) {
+void exit(int a) __attribute__ ((noreturn)){
     Process* proc = NULL;
     if((proc = _doEmulate()) != NULL) {
         process_emu_exit(proc, a);
@@ -418,7 +418,7 @@ void exit(int a) {
     }
 }
 
-void pthread_exit(void* a) {
+void pthread_exit(void* a) __attribute__ ((noreturn)){
     Process* proc = NULL;
     if((proc = _doEmulate()) != NULL) {
         process_emu_pthread_exit(proc, a);
@@ -428,7 +428,7 @@ void pthread_exit(void* a) {
     }
 }
 
-void abort(void) {
+void abort(void) __attribute__ ((noreturn)){
     Process* proc = NULL;
     if((proc = _doEmulate()) != NULL) {
         process_emu_abort(proc);
