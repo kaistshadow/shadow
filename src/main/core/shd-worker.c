@@ -429,3 +429,8 @@ gboolean worker_isBootstrapActive() {
         return FALSE;
     }
 }
+// BLEEP memshare
+gboolean worker_getMemshareSupport() {
+    Worker* worker = _worker_getPrivate();
+    return slave_getMemshareSupport(worker->slave);
+}

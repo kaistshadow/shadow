@@ -56,5 +56,7 @@ void worker_incrementPluginError();
 
 Address* worker_resolveIPToAddress(in_addr_t ip);
 Address* worker_resolveNameToAddress(const gchar* name);
+// BLEEP memshare
+gboolean worker_getMemshareSupport();
 
 #endif /* SHD_WORKER_H_ */

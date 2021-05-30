@@ -8414,6 +8414,12 @@ void process_emu_shadow_instrumentation_marker_set(Process* proc, int file_symbo
 }
 
 // bleep memshare
+int process_emu_shadow_check_memshare_flag(Process* proc) {
+    ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
+    int res = worker_getMemshareSupport();
+    _process_changeContext(proc, PCTX_SHADOW, prevCTX);
+    return res;
+}
 void process_emu_shadow_try_register_memshare_table(Process* proc, void* type_idx_ref, void* mtbl) {
     ProcessContext prevCTX = _process_changeContext(proc, proc->activeContext, PCTX_SHADOW);
     try_register_memshare_table(type_idx_ref, mtbl);

@@ -75,7 +75,8 @@ PRELOADDEF(return, void, shadow_instrumentation_marker_set, (int file_symbol, in
 PRELOADDEF(return, void, shadow_bitcoin_register_hash,(const char hash[], int reindex), hash, reindex);
 PRELOADDEF(return, int, shadow_bitcoin_check_hash,(const char hash[]), hash);
 PRELOADDEF(return, void, shadow_bitcoin_load_hash,(void));
-
+// BLEEP memshare
+PRELOADDEF(return, int, shadow_check_memshare_flag,(void));
 PRELOADDEF(return, void, shadow_try_register_memshare_table,(void* type_idx_ref, void* mtbl), type_idx_ref, mtbl);
 PRELOADDEF(return, void, shadow_memshare_try_share,(void* type_idx_ref, void* sptr_ref), type_idx_ref, sptr_ref);
 PRELOADDEF(return, void*, shadow_memshare_lookup,(void* type_idx_ref, void* sptr_ref), type_idx_ref, sptr_ref);

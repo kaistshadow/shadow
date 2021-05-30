@@ -576,7 +576,16 @@ void shadow_bitcoin_load_hash() {
   }
 }
 
-// bleep memshare
+// BLEEP memshare
+int shadow_check_memshare_flag() {
+    Process* proc = NULL;
+    if((proc = _doEmulate()) != NULL) {
+        return process_emu_shadow_check_memshare_flag(proc);
+    } else {
+        ENSURE(shadow_check_memshare_flag);
+        return director.next.shadow_check_memshare_flag();
+    }
+}
 void shadow_try_register_memshare_table(void* type_idx_ref, void* mtbl) {
     Process* proc = NULL;
     if((proc = _doEmulate()) != NULL) {

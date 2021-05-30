@@ -489,3 +489,7 @@ SimulationTime slave_getBootstrapEndTime(Slave* slave) {
     MAGIC_ASSERT(slave);
     return slave->bootstrapEndTime;
 }
+// BLEEP memshare
+gboolean slave_getMemshareSupport(Slave* slave) {
+    return options_getMemshareSupport(slave->options);
+}

@@ -121,6 +121,8 @@ const GString* options_getInputXMLFilename(Options* options);
 const gchar* options_getDataOutputPath(Options* options);
 const gchar* options_getDataTemplatePath(Options* options);
 gboolean options_getTlsFixTurnOnOffStatus (Options* options);
+// BLEEP memshare support
+gboolean options_getMemshareSupport (Options* options);
 /** @} */
 
 #endif /* SHD_CONFIGURATION_H_ */

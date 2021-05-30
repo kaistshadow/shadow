@@ -47,6 +47,8 @@ struct _Options {
 
     GString* inputXMLFilename;
     gboolean turn_off_tls_fix;
+    // BLEEP memshare support
+    gboolean memshareSupport;
     MAGIC_DECLARE;
 };
 
@@ -96,6 +98,7 @@ Options* options_new(gint argc, gchar* argv[]) {
       { "valgrind", 'x', 0, G_OPTION_ARG_NONE, &(options->runValgrind), "Run through valgrind for debugging", NULL },
       { "version", 'v', 0, G_OPTION_ARG_NONE, &(options->printSoftwareVersion), "Print software version and exit", NULL },
       { "turn_off_tls_fix", 'f', 0, G_OPTION_ARG_INT, &(options->turn_off_tls_fix), "Turn on/off tlx-fix mechanism. 1 to turn off and 0 to turn on. [1])", "N"},
+      { "memshare", 'm', 0, G_OPTION_ARG_NONE, &(options->memshareSupport), "Enable memshare support", NULL },
       { NULL },
     };
 
@@ -445,4 +448,8 @@ gboolean options_getTlsFixTurnOnOffStatus (Options* options) {
     MAGIC_ASSERT(options);
     return options->turn_off_tls_fix;
 }
-
+// BLEEP memshare support
+gboolean options_getMemshareSupport (Options* options) {
+    MAGIC_ASSERT(options);
+    return options->memshareSupport;
+}
